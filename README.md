@@ -20,4 +20,11 @@ Run tests:
 swift test
 ```
 
-Open the package in Xcode for code browsing and tests. A dedicated iOS `.xcodeproj` app target still needs to be added before the app can be launched directly in the iOS Simulator.
+Generate and open the iOS project:
+
+```sh
+xcodegen generate
+open TurtlePod.xcodeproj
+```
+
+Then run the `TurtlePod` scheme on an iOS Simulator.

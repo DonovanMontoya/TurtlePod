@@ -1,0 +1,65 @@
+name: TurtlePod
+
+options:
+  bundleIdPrefix: com.turtlepod
+  deploymentTarget:
+    iOS: "18.0"
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  TurtlePodCore:
+    type: framework
+    platform: iOS
+    sources:
+      - path: Sources/TurtlePodCore
+    info:
+      path: Generated/TurtlePodCore-Info.plist
+      properties:
+        CFBundleDisplayName: TurtlePodCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.turtlepod.core
+        SKIP_INSTALL: YES
+
+  TurtlePod:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/TurtlePodApp
+    dependencies:
+      - target: TurtlePodCore
+    info:
+      path: Generated/TurtlePod-Info.plist
+      properties:
+        CFBundleDisplayName: TurtlePod
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.turtlepod.app
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
+        CODE_SIGN_STYLE: Automatic
+
+schemes:
+  TurtlePod:
+    build:
+      targets:
+        TurtlePod: all
+    run:
+      config: Debug
+    test:
+      config: Debug

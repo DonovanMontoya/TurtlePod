@@ -13,13 +13,14 @@ The app starts intentionally small:
 - Playback automatically skips detected ad segments and offers undo.
 - No backend, accounts, podcast search, sync, or recommendation system is included in v1.
 
-The project should move from a private prototype toward a TestFlight-ready beta without changing the core architecture. The current code is a Swift package that establishes the domain model, service boundaries, SwiftUI shell, and local tests. The next major milestone is wrapping that code in a dedicated iOS app target that runs in the iOS Simulator.
+The project should move from a private prototype toward a TestFlight-ready beta without changing the core architecture. The current code is a Swift package that establishes the domain model, service boundaries, SwiftUI shell, and local tests. The next major milestone is keeping the generated iOS app target healthy and verifying the core flows in the iOS Simulator.
 
 ## Current Repository Layout
 
 ```text
 TurtlePod/
   Package.swift
+  project.yml
   README.md
   PROGRESS.md
   DESIGN_PLAN.md
@@ -202,12 +203,17 @@ Planned next tests:
 
 Goal: make TurtlePod launchable in the iOS Simulator through Xcode.
 
-Work:
+Status: implemented. The repo includes `project.yml`, generated Info.plists, and `TurtlePod.xcodeproj`. The `TurtlePod` scheme builds for the available iPhone simulator, and the app has been installed and launched with `simctl`.
+
+Completed work:
 
 - Add a dedicated iOS `.xcodeproj` or app target.
 - Wire bundle id, app icon placeholders, Info.plist settings, and signing defaults.
 - Ensure `TurtlePodApp` runs as a real iOS app target.
-- Verify RSS add, settings, and local UI navigation in the simulator.
+
+Remaining work:
+
+- Verify RSS add, settings persistence, download controls, and local UI navigation inside the running simulator.
 
 ### Phase 2: Core Podcast Flow
 

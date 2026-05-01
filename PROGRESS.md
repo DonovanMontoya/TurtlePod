@@ -2,13 +2,15 @@
 
 ## Current State
 
-TurtlePod has been bootstrapped as a Swift package for an iOS 18+ podcast MVP. The repo now contains a testable core library, a SwiftUI app shell, local persistence, OpenAI integration plumbing, offline download support, playback abstractions, and deterministic tests.
+TurtlePod has been bootstrapped as a Swift package plus a generated Xcode iOS project for an iOS 18+ podcast MVP. The repo now contains a testable core library, a SwiftUI app shell, local persistence, OpenAI integration plumbing, offline download support, playback abstractions, deterministic tests, and an iOS Simulator-buildable app target.
 
-This is an early MVP implementation. The main architecture and core flows are in place, but it is not yet packaged as a normal Xcode iOS app project that can be launched directly in the iOS Simulator.
+This is an early MVP implementation. The main architecture and core flows are in place, and the `TurtlePod` scheme now builds, installs, and launches on the available iPhone simulator.
 
 ## Implemented
 
 - Swift package structure with `TurtlePodCore`, `TurtlePodApp`, and `TurtlePodCoreTests`.
+- XcodeGen project configuration in `project.yml`.
+- Generated `TurtlePod.xcodeproj` with a `TurtlePod` iOS app target and `TurtlePodCore` framework target.
 - SwiftUI screens for Library, Episode Detail, Downloads, Player, and Settings.
 - RSS feed ingestion from a user-entered feed URL.
 - RSS parsing for feed title, artwork, episode title, audio enclosure URL, duration, publish date, and description.
@@ -50,6 +52,16 @@ The local SwiftPM test suite passes:
 swift test
 ```
 
+The generated Xcode project builds for the available iPhone simulator:
+
+```sh
+xcodegen generate
+xcrun simctl list devices available
+xcodebuild -project TurtlePod.xcodeproj -scheme TurtlePod -sdk iphonesimulator -destination 'id=<available-simulator-id>' CODE_SIGNING_ALLOWED=NO build
+```
+
+The built app was also installed and launched with `simctl` using bundle id `com.turtlepod.app`.
+
 Current coverage includes:
 
 - RSS parser tests using a static XML fixture.
@@ -59,7 +71,7 @@ Current coverage includes:
 
 ## Known Gaps
 
-- No Xcode `.xcodeproj` or dedicated iOS app target has been generated yet, so the app is not currently launchable in the iOS Simulator through the standard Xcode Run button.
+- In-app simulator smoke testing still needs to be completed for RSS entry, settings persistence, downloads, and playback.
 - Download progress is modeled, but the current implementation reports completion rather than streaming granular progress updates.
 - OpenAI network calls are implemented but not covered by live API tests.
 - Background audio, Now Playing metadata, and remote command center controls are not implemented.
