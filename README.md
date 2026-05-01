@@ -9,6 +9,11 @@ The current implementation is a Swift package with:
 - Keychain-backed OpenAI API key storage.
 - Fixture-backed unit tests for RSS parsing, ad range merging, AI response parsing, and playback auto-skip behavior.
 
+Project docs:
+
+- [DESIGN_PLAN.md](DESIGN_PLAN.md): product intent, architecture, current path layout, and implementation trajectory.
+- [PROGRESS.md](PROGRESS.md): current checkpoint, implemented features, verification, and known gaps.
+
 Run tests:
 
 ```sh
