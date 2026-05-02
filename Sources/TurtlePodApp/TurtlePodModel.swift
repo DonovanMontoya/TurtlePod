@@ -275,11 +275,24 @@ final class TurtlePodModel: ObservableObject {
 
     private func ensureDownloadFileExists(for episodeID: UUID) async -> Bool {
         guard let episode = episode(withID: episodeID),
-              episode.download?.state == .downloaded,
-              let localFileURL = episode.download?.localFileURL,
-              FileManager.default.fileExists(atPath: localFileURL.path(percentEncoded: false)) else {
+              episode.download?.state == .downloaded else {
             await markDownloadMissing(episodeID)
             return false
+        }
+
+        if let localFileURL = episode.download?.localFileURL,
+           FileManager.default.fileExists(atPath: localFileURL.path(percentEncoded: false)) {
+            return true
+        }
+
+        let recoveredURL = downloadService.localFileURL(for: episode)
+        guard FileManager.default.fileExists(atPath: recoveredURL.path(percentEncoded: false)) else {
+            await markDownloadMissing(episodeID)
+            return false
+        }
+
+        await updateEpisode(episodeID) { episode in
+            episode.download?.localFileURL = recoveredURL
         }
         return true
     }
@@ -306,6 +319,14 @@ final class TurtlePodModel: ObservableObject {
                 }
                 guard let localFileURL = download?.localFileURL,
                       FileManager.default.fileExists(atPath: localFileURL.path(percentEncoded: false)) else {
+                    let episode = feeds[feedIndex].episodes[episodeIndex]
+                    let recoveredURL = downloadService.localFileURL(for: episode)
+                    if FileManager.default.fileExists(atPath: recoveredURL.path(percentEncoded: false)) {
+                        feeds[feedIndex].episodes[episodeIndex].download?.localFileURL = recoveredURL
+                        changed = true
+                        continue
+                    }
+
                     feeds[feedIndex].episodes[episodeIndex].download = EpisodeDownload(
                         state: .failed,
                         progress: 0,

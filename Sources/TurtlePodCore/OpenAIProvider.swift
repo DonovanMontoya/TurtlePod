@@ -9,7 +9,7 @@ public final class OpenAIProvider: AIProvider {
     private let baseURL: URL
 
     public init(
-        transcriptionModel: String = "gpt-4o-mini-transcribe",
+        transcriptionModel: String = "whisper-1",
         classificationModel: String = "gpt-4.1-mini",
         session: URLSession = .shared,
         baseURL: URL = URL(string: "https://api.openai.com/v1")!
@@ -32,6 +32,7 @@ public final class OpenAIProvider: AIProvider {
         request.httpBody = MultipartFormData(boundary: boundary)
             .addField(name: "model", value: transcriptionModel)
             .addField(name: "response_format", value: Self.transcriptionResponseFormat(for: transcriptionModel))
+            .addFields(name: "timestamp_granularities[]", values: Self.transcriptionTimestampGranularities(for: transcriptionModel))
             .addFile(name: "file", filename: audioFile.lastPathComponent, contentType: Self.audioContentType(for: audioFile), data: audioData)
             .body
 
@@ -41,14 +42,14 @@ public final class OpenAIProvider: AIProvider {
     }
 
     public func classify(transcript: [TranscriptChunk], apiKey: String) async throws -> [AdSegment] {
-        let windows = transcript.map { chunk in
-            "[\(chunk.start)-\(chunk.end)] \(chunk.text)"
-        }.joined(separator: "\n")
+        let windows = Self.transcriptWindowText(transcript)
 
         let schemaInstruction = """
         Return only JSON with this shape:
         {"ad_segments":[{"start":0.0,"end":0.0,"confidence":0.0,"reason":"short reason"}]}
         Identify sponsorship, host-read ads, promo codes, and paid promotional interruptions. Do not mark normal show content.
+        Use the transcript timestamps exactly. Return narrow ad boundaries to the nearest 0.1 second when possible.
+        Do not pad ranges to 30-second increments, chapter boundaries, or whole transcript windows.
         """
 
         let payload: [String: Any] = [
@@ -106,6 +107,10 @@ public final class OpenAIProvider: AIProvider {
         model == "whisper-1" ? "verbose_json" : "json"
     }
 
+    public static func transcriptionTimestampGranularities(for model: String) -> [String] {
+        model == "whisper-1" ? ["segment"] : []
+    }
+
     public static func audioContentType(for fileURL: URL) -> String {
         switch fileURL.pathExtension.lowercased() {
         case "m4a":
@@ -121,6 +126,12 @@ public final class OpenAIProvider: AIProvider {
         default:
             "audio/mpeg"
         }
+    }
+
+    public static func transcriptWindowText(_ transcript: [TranscriptChunk]) -> String {
+        transcript.map { chunk in
+            "[\(formatTimestamp(chunk.start))-\(formatTimestamp(chunk.end))] \(chunk.text)"
+        }.joined(separator: "\n")
     }
 
     public static func parseClassificationResponse(_ data: Data, provider: String, model: String) throws -> [AdSegment] {
@@ -188,6 +199,10 @@ public final class OpenAIProvider: AIProvider {
         }
     }
 
+    private static func formatTimestamp(_ seconds: TimeInterval) -> String {
+        String(format: "%.1f", locale: Locale(identifier: "en_US_POSIX"), seconds)
+    }
+
     private func validate(response: URLResponse, data: Data) throws {
         guard let httpResponse = response as? HTTPURLResponse else { return }
         guard (200..<300).contains(httpResponse.statusCode) else {
@@ -217,6 +232,12 @@ private struct MultipartFormData {
         copy.body.appendString("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
         copy.body.appendString("\(value)\r\n")
         return copy
+    }
+
+    func addFields(name: String, values: [String]) -> MultipartFormData {
+        values.reduce(self) { formData, value in
+            formData.addField(name: name, value: value)
+        }
     }
 
     func addFile(name: String, filename: String, contentType: String, data: Data) -> MultipartFormData {

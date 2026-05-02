@@ -7,6 +7,7 @@ public protocol PodcastFeedService: Sendable {
 public protocol EpisodeDownloadService: Sendable {
     func download(_ episode: PodcastEpisode) async throws -> EpisodeDownload
     func deleteDownload(for episode: PodcastEpisode) async throws
+    func localFileURL(for episode: PodcastEpisode) -> URL
 }
 
 public protocol PlaybackService: AnyObject, Sendable {

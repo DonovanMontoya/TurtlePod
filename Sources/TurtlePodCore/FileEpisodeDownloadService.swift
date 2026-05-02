@@ -22,9 +22,7 @@ public final class FileEpisodeDownloadService: EpisodeDownloadService {
             throw URLError(.badServerResponse)
         }
 
-        let destination = downloadsDirectory
-            .appending(path: episode.id.uuidString, directoryHint: .notDirectory)
-            .appendingPathExtension(episode.audioURL.pathExtension.isEmpty ? "mp3" : episode.audioURL.pathExtension)
+        let destination = localFileURL(for: episode)
 
         if FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) {
             try FileManager.default.removeItem(at: destination)
@@ -35,9 +33,21 @@ public final class FileEpisodeDownloadService: EpisodeDownloadService {
     }
 
     public func deleteDownload(for episode: PodcastEpisode) async throws {
-        guard let localFileURL = episode.download?.localFileURL else { return }
-        if FileManager.default.fileExists(atPath: localFileURL.path(percentEncoded: false)) {
+        let candidates = [episode.download?.localFileURL, localFileURL(for: episode)]
+            .compactMap(\.self)
+            .reduce(into: [String: URL]()) { urlsByPath, url in
+                urlsByPath[url.path(percentEncoded: false)] = url
+            }
+            .values
+
+        for localFileURL in candidates where FileManager.default.fileExists(atPath: localFileURL.path(percentEncoded: false)) {
             try FileManager.default.removeItem(at: localFileURL)
         }
+    }
+
+    public func localFileURL(for episode: PodcastEpisode) -> URL {
+        downloadsDirectory
+            .appending(path: episode.id.uuidString, directoryHint: .notDirectory)
+            .appendingPathExtension(episode.audioURL.pathExtension.isEmpty ? "mp3" : episode.audioURL.pathExtension)
     }
 }

@@ -9,6 +9,26 @@ final class OpenAIProviderParsingTests: XCTestCase {
         XCTAssertEqual(OpenAIProvider.transcriptionResponseFormat(for: "whisper-1"), "verbose_json")
     }
 
+    func testRequestsSegmentTimestampsForTimestampCapableModel() {
+        XCTAssertEqual(OpenAIProvider.transcriptionTimestampGranularities(for: "whisper-1"), ["segment"])
+        XCTAssertEqual(OpenAIProvider.transcriptionTimestampGranularities(for: "gpt-4o-mini-transcribe"), [])
+    }
+
+    func testFormatsTranscriptWindowsWithSubsecondTimestamps() {
+        let transcript = [
+            TranscriptChunk(start: 12.34, end: 16.98, text: "Use code TURTLE."),
+            TranscriptChunk(start: 16.98, end: 19.41, text: "Now back to the show.")
+        ]
+
+        XCTAssertEqual(
+            OpenAIProvider.transcriptWindowText(transcript),
+            """
+            [12.3-17.0] Use code TURTLE.
+            [17.0-19.4] Now back to the show.
+            """
+        )
+    }
+
     func testUsesAudioContentTypeForFileExtension() {
         XCTAssertEqual(OpenAIProvider.audioContentType(for: URL(fileURLWithPath: "/tmp/audio.m4a")), "audio/mp4")
         XCTAssertEqual(OpenAIProvider.audioContentType(for: URL(fileURLWithPath: "/tmp/audio.wav")), "audio/wav")
