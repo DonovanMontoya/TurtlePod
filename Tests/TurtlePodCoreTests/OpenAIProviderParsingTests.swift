@@ -3,6 +3,18 @@ import XCTest
 @testable import TurtlePodCore
 
 final class OpenAIProviderParsingTests: XCTestCase {
+    func testUsesSupportedTranscriptionResponseFormatForModel() {
+        XCTAssertEqual(OpenAIProvider.transcriptionResponseFormat(for: "gpt-4o-mini-transcribe"), "json")
+        XCTAssertEqual(OpenAIProvider.transcriptionResponseFormat(for: "gpt-4o-transcribe"), "json")
+        XCTAssertEqual(OpenAIProvider.transcriptionResponseFormat(for: "whisper-1"), "verbose_json")
+    }
+
+    func testUsesAudioContentTypeForFileExtension() {
+        XCTAssertEqual(OpenAIProvider.audioContentType(for: URL(fileURLWithPath: "/tmp/audio.m4a")), "audio/mp4")
+        XCTAssertEqual(OpenAIProvider.audioContentType(for: URL(fileURLWithPath: "/tmp/audio.wav")), "audio/wav")
+        XCTAssertEqual(OpenAIProvider.audioContentType(for: URL(fileURLWithPath: "/tmp/audio.mp3")), "audio/mpeg")
+    }
+
     func testParsesVerboseTranscriptionSegments() throws {
         let data = """
         {

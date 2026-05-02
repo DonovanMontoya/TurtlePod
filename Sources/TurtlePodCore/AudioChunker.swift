@@ -31,7 +31,17 @@ public struct AVAssetAudioChunker: AudioChunker {
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
         let asset = AVURLAsset(url: audioFile)
-        let duration = try await asset.load(.duration).seconds
+        let duration: TimeInterval
+        do {
+            duration = try await asset.load(.duration).seconds
+        } catch {
+            let fileSize = try FileManager.default.attributesOfItem(atPath: audioFile.path(percentEncoded: false))[.size] as? NSNumber
+            if let fileSize, fileSize.int64Value <= 25 * 1024 * 1024 {
+                return [AudioChunk(fileURL: audioFile, startOffset: 0, duration: 0, isTemporary: false)]
+            }
+            throw TurtlePodError.audioInspectionFailed(error.localizedDescription)
+        }
+
         guard duration.isFinite, duration > maxDuration else {
             return [AudioChunk(fileURL: audioFile, startOffset: 0, duration: max(duration, 0), isTemporary: false)]
         }

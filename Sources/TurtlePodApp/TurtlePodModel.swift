@@ -78,6 +78,10 @@ final class TurtlePodModel: ObservableObject {
     func load() async {
         do {
             feeds = try await store.loadFeeds()
+            let removedStaleDownloads = clearStaleDownloads()
+            if removedStaleDownloads {
+                try await persistFeeds()
+            }
             settings = try await store.loadSettings()
             apiKeyDraft = (try keyStore.loadOpenAIKey()) ?? ""
         } catch {
@@ -139,6 +143,9 @@ final class TurtlePodModel: ObservableObject {
             statusMessage = "Enable AI analysis in Settings first."
             return
         }
+        guard await ensureDownloadFileExists(for: episode.id) else {
+            return
+        }
 
         await updateEpisode(episode.id) { episode in
             episode.analysis.status = .transcribing
@@ -146,7 +153,20 @@ final class TurtlePodModel: ObservableObject {
         }
 
         do {
-            let analysis = try await analysisPipeline.analyze(episode)
+            let analysis = try await analysisPipeline.analyze(
+                episode,
+                statusDidChange: { status in
+                    await self.updateEpisode(episode.id) { episode in
+                        episode.analysis.status = status
+                    }
+                    if status == .classifying {
+                        self.statusMessage = "Classifying transcript for ads..."
+                    }
+                },
+                transcriptionProgressDidChange: { currentChunk, totalChunks in
+                    self.statusMessage = "Transcribing audio chunk \(currentChunk) of \(totalChunks)..."
+                }
+            )
             await updateEpisode(episode.id) { episode in
                 episode.analysis = analysis
             }
@@ -161,8 +181,15 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func play(_ episode: PodcastEpisode) async {
+        guard await ensureDownloadFileExists(for: episode.id) else {
+            return
+        }
+
         do {
-            try await playback.load(episode)
+            guard let currentEpisode = self.episode(withID: episode.id) else {
+                throw TurtlePodError.notDownloaded
+            }
+            try await playback.load(currentEpisode)
             await autoSkipController.resetForNewEpisode()
             await playback.play()
         } catch {
@@ -244,6 +271,53 @@ final class TurtlePodModel: ObservableObject {
             break
         }
         try? await persistFeeds()
+    }
+
+    private func ensureDownloadFileExists(for episodeID: UUID) async -> Bool {
+        guard let episode = episode(withID: episodeID),
+              episode.download?.state == .downloaded,
+              let localFileURL = episode.download?.localFileURL,
+              FileManager.default.fileExists(atPath: localFileURL.path(percentEncoded: false)) else {
+            await markDownloadMissing(episodeID)
+            return false
+        }
+        return true
+    }
+
+    private func markDownloadMissing(_ episodeID: UUID) async {
+        await updateEpisode(episodeID) { episode in
+            episode.download = EpisodeDownload(
+                state: .failed,
+                progress: 0,
+                errorMessage: "The downloaded file is missing. Download the episode again."
+            )
+            episode.analysis = EpisodeAnalysis()
+        }
+        statusMessage = "The downloaded file is missing. Download the episode again."
+    }
+
+    private func clearStaleDownloads() -> Bool {
+        var changed = false
+        for feedIndex in feeds.indices {
+            for episodeIndex in feeds[feedIndex].episodes.indices {
+                let download = feeds[feedIndex].episodes[episodeIndex].download
+                guard download?.state == .downloaded else {
+                    continue
+                }
+                guard let localFileURL = download?.localFileURL,
+                      FileManager.default.fileExists(atPath: localFileURL.path(percentEncoded: false)) else {
+                    feeds[feedIndex].episodes[episodeIndex].download = EpisodeDownload(
+                        state: .failed,
+                        progress: 0,
+                        errorMessage: "The downloaded file is missing. Download the episode again."
+                    )
+                    feeds[feedIndex].episodes[episodeIndex].analysis = EpisodeAnalysis()
+                    changed = true
+                    continue
+                }
+            }
+        }
+        return changed
     }
 
     private func persistFeeds() async throws {

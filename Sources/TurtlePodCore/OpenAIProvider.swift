@@ -24,14 +24,15 @@ public final class OpenAIProvider: AIProvider {
         let boundary = "Boundary-\(UUID().uuidString)"
         var request = URLRequest(url: baseURL.appending(path: "audio/transcriptions"))
         request.httpMethod = "POST"
+        request.timeoutInterval = 300
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         let audioData = try Data(contentsOf: audioFile)
         request.httpBody = MultipartFormData(boundary: boundary)
             .addField(name: "model", value: transcriptionModel)
-            .addField(name: "response_format", value: "verbose_json")
-            .addFile(name: "file", filename: audioFile.lastPathComponent, contentType: "audio/mpeg", data: audioData)
+            .addField(name: "response_format", value: Self.transcriptionResponseFormat(for: transcriptionModel))
+            .addFile(name: "file", filename: audioFile.lastPathComponent, contentType: Self.audioContentType(for: audioFile), data: audioData)
             .body
 
         let (data, response) = try await session.data(for: request)
@@ -67,6 +68,7 @@ public final class OpenAIProvider: AIProvider {
 
         var request = URLRequest(url: baseURL.appending(path: "responses"))
         request.httpMethod = "POST"
+        request.timeoutInterval = 300
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
@@ -98,6 +100,27 @@ public final class OpenAIProvider: AIProvider {
         }
 
         throw TurtlePodError.unsupportedResponse
+    }
+
+    public static func transcriptionResponseFormat(for model: String) -> String {
+        model == "whisper-1" ? "verbose_json" : "json"
+    }
+
+    public static func audioContentType(for fileURL: URL) -> String {
+        switch fileURL.pathExtension.lowercased() {
+        case "m4a":
+            "audio/mp4"
+        case "mp4":
+            "audio/mp4"
+        case "mpga":
+            "audio/mpeg"
+        case "wav":
+            "audio/wav"
+        case "webm":
+            "audio/webm"
+        default:
+            "audio/mpeg"
+        }
     }
 
     public static func parseClassificationResponse(_ data: Data, provider: String, model: String) throws -> [AdSegment] {
@@ -168,9 +191,19 @@ public final class OpenAIProvider: AIProvider {
     private func validate(response: URLResponse, data: Data) throws {
         guard let httpResponse = response as? HTTPURLResponse else { return }
         guard (200..<300).contains(httpResponse.statusCode) else {
-            let message = String(data: data, encoding: .utf8) ?? "OpenAI request failed."
+            let message = Self.parseOpenAIErrorMessage(data) ?? String(data: data, encoding: .utf8) ?? "OpenAI request failed."
             throw NSError(domain: "OpenAIProvider", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: message])
         }
+    }
+
+    private static func parseOpenAIErrorMessage(_ data: Data) -> String? {
+        guard let object = try? JSONSerialization.jsonObject(with: data),
+              let dictionary = object as? [String: Any],
+              let error = dictionary["error"] as? [String: Any],
+              let message = error["message"] as? String else {
+            return nil
+        }
+        return message
     }
 }
 

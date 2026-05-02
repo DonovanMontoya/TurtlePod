@@ -11,7 +11,11 @@ public final class DefaultTranscriptService: TranscriptService {
         self.maxChunkDuration = maxChunkDuration
     }
 
-    public func transcribeDownloadedEpisode(_ episode: PodcastEpisode, apiKey: String) async throws -> [TranscriptChunk] {
+    public func transcribeDownloadedEpisode(
+        _ episode: PodcastEpisode,
+        apiKey: String,
+        progressDidChange: (@MainActor @Sendable (_ currentChunk: Int, _ totalChunks: Int) async -> Void)? = nil
+    ) async throws -> [TranscriptChunk] {
         guard let localFileURL = episode.download?.localFileURL, episode.download?.state == .downloaded else {
             throw TurtlePodError.notDownloaded
         }
@@ -19,7 +23,8 @@ public final class DefaultTranscriptService: TranscriptService {
         let chunks = try await chunker.chunks(for: localFileURL, maxDuration: maxChunkDuration)
         var transcript: [TranscriptChunk] = []
 
-        for chunk in chunks {
+        for (index, chunk) in chunks.enumerated() {
+            await progressDidChange?(index + 1, chunks.count)
             let chunkTranscript = try await provider.transcribe(audioFile: chunk.fileURL, apiKey: apiKey)
                 .map { item in
                     TranscriptChunk(
@@ -72,7 +77,11 @@ public actor EpisodeAnalysisPipeline {
         self.providerMetadata = providerMetadata
     }
 
-    public func analyze(_ episode: PodcastEpisode) async throws -> EpisodeAnalysis {
+    public func analyze(
+        _ episode: PodcastEpisode,
+        statusDidChange: (@MainActor @Sendable (AnalysisStatus) async -> Void)? = nil,
+        transcriptionProgressDidChange: (@MainActor @Sendable (_ currentChunk: Int, _ totalChunks: Int) async -> Void)? = nil
+    ) async throws -> EpisodeAnalysis {
         guard let apiKey = try apiKeyStore.loadOpenAIKey(), !apiKey.isEmpty else {
             throw TurtlePodError.apiKeyMissing
         }
@@ -80,7 +89,13 @@ public actor EpisodeAnalysisPipeline {
             throw TurtlePodError.notDownloaded
         }
 
-        let transcript = try await transcriptService.transcribeDownloadedEpisode(episode, apiKey: apiKey)
+        await statusDidChange?(.transcribing)
+        let transcript = try await transcriptService.transcribeDownloadedEpisode(
+            episode,
+            apiKey: apiKey,
+            progressDidChange: transcriptionProgressDidChange
+        )
+        await statusDidChange?(.classifying)
         let adSegments = try await adDetectionService.detectAds(in: transcript, apiKey: apiKey)
         return EpisodeAnalysis(
             status: .complete,

@@ -21,7 +21,17 @@ public protocol PlaybackService: AnyObject, Sendable {
 }
 
 public protocol TranscriptService: Sendable {
-    func transcribeDownloadedEpisode(_ episode: PodcastEpisode, apiKey: String) async throws -> [TranscriptChunk]
+    func transcribeDownloadedEpisode(
+        _ episode: PodcastEpisode,
+        apiKey: String,
+        progressDidChange: (@MainActor @Sendable (_ currentChunk: Int, _ totalChunks: Int) async -> Void)?
+    ) async throws -> [TranscriptChunk]
+}
+
+public extension TranscriptService {
+    func transcribeDownloadedEpisode(_ episode: PodcastEpisode, apiKey: String) async throws -> [TranscriptChunk] {
+        try await transcribeDownloadedEpisode(episode, apiKey: apiKey, progressDidChange: nil)
+    }
 }
 
 public protocol AdDetectionService: Sendable {
@@ -58,6 +68,7 @@ public enum TurtlePodError: Error, LocalizedError, Equatable {
     case notDownloaded
     case apiKeyMissing
     case unsupportedResponse
+    case audioInspectionFailed(String)
     case keychain(OSStatus)
 
     public var errorDescription: String? {
@@ -72,6 +83,8 @@ public enum TurtlePodError: Error, LocalizedError, Equatable {
             "Add an OpenAI API key before running AI analysis."
         case .unsupportedResponse:
             "The service returned an unsupported response."
+        case .audioInspectionFailed(let message):
+            "The downloaded audio file could not be inspected: \(message)"
         case .keychain(let status):
             "Keychain operation failed with status \(status)."
         }
