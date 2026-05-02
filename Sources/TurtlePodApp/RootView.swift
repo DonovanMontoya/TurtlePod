@@ -52,7 +52,7 @@ struct RootView: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.bottom, 8)
+                .padding(.bottom, currentEpisode == nil ? 8 : 64)
             }
         }
         .task {
