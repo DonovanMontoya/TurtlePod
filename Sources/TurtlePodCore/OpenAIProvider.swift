@@ -10,7 +10,7 @@ public final class OpenAIProvider: AIProvider {
 
     public init(
         transcriptionModel: String = "whisper-1",
-        classificationModel: String = "gpt-4.1-mini",
+        classificationModel: String = "gpt-4o-mini",
         session: URLSession = .shared,
         baseURL: URL = URL(string: "https://api.openai.com/v1")!
     ) {

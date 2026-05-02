@@ -3,6 +3,13 @@ import XCTest
 @testable import TurtlePodCore
 
 final class OpenAIProviderParsingTests: XCTestCase {
+    func testUsesLowCostDefaultModels() {
+        let provider = OpenAIProvider()
+
+        XCTAssertEqual(provider.transcriptionModel, "whisper-1")
+        XCTAssertEqual(provider.classificationModel, "gpt-4o-mini")
+    }
+
     func testUsesSupportedTranscriptionResponseFormatForModel() {
         XCTAssertEqual(OpenAIProvider.transcriptionResponseFormat(for: "gpt-4o-mini-transcribe"), "json")
         XCTAssertEqual(OpenAIProvider.transcriptionResponseFormat(for: "gpt-4o-transcribe"), "json")
