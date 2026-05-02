@@ -60,6 +60,7 @@ struct RootView: View {
                 currentEpisode = await model.playback.currentEpisode
                 currentTime = await model.playback.currentTime
                 isPlaying = await model.playback.isPlaying
+                await model.evaluateAutoSkip()
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }
