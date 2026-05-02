@@ -9,6 +9,7 @@ final class TurtlePodModel: ObservableObject {
     @Published var apiKeyDraft = ""
     @Published var statusMessage: String?
     @Published var activeSkipEvent: SkipEvent?
+    @Published private var transcriptionProgressByEpisodeID: [UUID: Double] = [:]
 
     let playback: AVPlayerPlaybackService
     private let feedService: PodcastFeedService
@@ -113,7 +114,14 @@ final class TurtlePodModel: ObservableObject {
         }
 
         do {
-            let result = try await downloadService.download(episode)
+            let result = try await downloadService.download(
+                episode,
+                progressDidChange: { progress in
+                    await self.updateEpisode(episode.id, persist: false) { episode in
+                        episode.download?.progress = min(max(progress, 0), 1)
+                    }
+                }
+            )
             await updateEpisode(episode.id) { episode in
                 episode.download = result
             }
@@ -151,6 +159,7 @@ final class TurtlePodModel: ObservableObject {
             episode.analysis.status = .transcribing
             episode.analysis.errorMessage = nil
         }
+        setTranscriptionProgress(0, for: episode.id)
 
         do {
             let analysis = try await analysisPipeline.analyze(
@@ -164,18 +173,22 @@ final class TurtlePodModel: ObservableObject {
                     }
                 },
                 transcriptionProgressDidChange: { currentChunk, totalChunks in
+                    let progress = totalChunks > 0 ? Double(currentChunk) / Double(totalChunks) : 0
+                    self.setTranscriptionProgress(progress, for: episode.id)
                     self.statusMessage = "Transcribing audio chunk \(currentChunk) of \(totalChunks)..."
                 }
             )
             await updateEpisode(episode.id) { episode in
                 episode.analysis = analysis
             }
+            setTranscriptionProgress(nil, for: episode.id)
             statusMessage = "Analysis complete."
         } catch {
             await updateEpisode(episode.id) { episode in
                 episode.analysis.status = .failed
                 episode.analysis.errorMessage = error.localizedDescription
             }
+            setTranscriptionProgress(nil, for: episode.id)
             statusMessage = error.localizedDescription
         }
     }
@@ -262,7 +275,11 @@ final class TurtlePodModel: ObservableObject {
         allEpisodes.first { $0.id == id }
     }
 
-    private func updateEpisode(_ episodeID: UUID, mutate: (inout PodcastEpisode) -> Void) async {
+    func transcriptionProgress(for episodeID: UUID) -> Double? {
+        transcriptionProgressByEpisodeID[episodeID]
+    }
+
+    private func updateEpisode(_ episodeID: UUID, persist: Bool = true, mutate: (inout PodcastEpisode) -> Void) async {
         for feedIndex in feeds.indices {
             guard let episodeIndex = feeds[feedIndex].episodes.firstIndex(where: { $0.id == episodeID }) else {
                 continue
@@ -270,7 +287,19 @@ final class TurtlePodModel: ObservableObject {
             mutate(&feeds[feedIndex].episodes[episodeIndex])
             break
         }
-        try? await persistFeeds()
+        if persist {
+            try? await persistFeeds()
+        }
+    }
+
+    private func setTranscriptionProgress(_ progress: Double?, for episodeID: UUID) {
+        var nextProgress = transcriptionProgressByEpisodeID
+        if let progress {
+            nextProgress[episodeID] = min(max(progress, 0), 1)
+        } else {
+            nextProgress.removeValue(forKey: episodeID)
+        }
+        transcriptionProgressByEpisodeID = nextProgress
     }
 
     private func ensureDownloadFileExists(for episodeID: UUID) async -> Bool {

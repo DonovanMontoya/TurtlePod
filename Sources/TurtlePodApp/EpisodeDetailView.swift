@@ -82,7 +82,10 @@ struct EpisodeDetailView: View {
                     }
 
                     Section("AI Analysis") {
-                        AnalysisStatusRow(analysis: episode.analysis)
+                        AnalysisStatusRow(
+                            analysis: episode.analysis,
+                            transcriptionProgress: model.transcriptionProgress(for: episode.id)
+                        )
                         Button {
                             Task { await model.analyze(episode) }
                         } label: {
@@ -117,8 +120,15 @@ private struct DownloadStatusRow: View {
         case .notDownloaded:
             Label("Not downloaded", systemImage: "icloud")
         case .downloading:
-            ProgressView(value: episode.download?.progress ?? 0) {
-                Text("Downloading")
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Label("Downloading", systemImage: "arrow.down.circle")
+                    Spacer()
+                    Text((episode.download?.progress ?? 0).formattedPercentage)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                ProgressView(value: episode.download?.progress ?? 0)
             }
         case .downloaded:
             Label("Available offline", systemImage: "checkmark.circle.fill")
@@ -132,6 +142,7 @@ private struct DownloadStatusRow: View {
 
 private struct AnalysisStatusRow: View {
     let analysis: EpisodeAnalysis
+    let transcriptionProgress: Double?
 
     var body: some View {
         switch analysis.status {
@@ -140,7 +151,16 @@ private struct AnalysisStatusRow: View {
         case .queued:
             Label("Queued", systemImage: "clock")
         case .transcribing:
-            ProgressView("Transcribing")
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Label("Transcribing", systemImage: "waveform")
+                    Spacer()
+                    Text((transcriptionProgress ?? 0).formattedPercentage)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                ProgressView(value: transcriptionProgress ?? 0)
+            }
         case .classifying:
             ProgressView("Classifying")
         case .complete:
@@ -150,6 +170,12 @@ private struct AnalysisStatusRow: View {
             Label(analysis.errorMessage ?? "Analysis failed", systemImage: "exclamationmark.triangle")
                 .foregroundStyle(.red)
         }
+    }
+}
+
+private extension Double {
+    var formattedPercentage: String {
+        "\(Int((self * 100).rounded()))%"
     }
 }
 

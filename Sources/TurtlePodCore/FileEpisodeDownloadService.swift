@@ -16,19 +16,75 @@ public final class FileEpisodeDownloadService: EpisodeDownloadService {
         try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
     }
 
-    public func download(_ episode: PodcastEpisode) async throws -> EpisodeDownload {
-        let (temporaryURL, response) = try await session.download(from: episode.audioURL)
+    public func download(
+        _ episode: PodcastEpisode,
+        progressDidChange: (@MainActor @Sendable (_ progress: Double) async -> Void)? = nil
+    ) async throws -> EpisodeDownload {
+        let destination = localFileURL(for: episode)
+        let temporaryURL = destination
+            .deletingPathExtension()
+            .appendingPathExtension("download")
+
+        if FileManager.default.fileExists(atPath: temporaryURL.path(percentEncoded: false)) {
+            try FileManager.default.removeItem(at: temporaryURL)
+        }
+        FileManager.default.createFile(atPath: temporaryURL.path(percentEncoded: false), contents: nil)
+
+        var didFinish = false
+        defer {
+            if !didFinish {
+                try? FileManager.default.removeItem(at: temporaryURL)
+            }
+        }
+
+        let (bytes, response) = try await session.bytes(from: episode.audioURL)
         if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
             throw URLError(.badServerResponse)
         }
 
-        let destination = localFileURL(for: episode)
+        await progressDidChange?(0)
+
+        let expectedLength = response.expectedContentLength
+        var downloadedBytes: Int64 = 0
+        var lastReportedProgress = 0.0
+        var buffer = Data()
+        buffer.reserveCapacity(64 * 1024)
+        let handle = try FileHandle(forWritingTo: temporaryURL)
+
+        do {
+            for try await byte in bytes {
+                buffer.append(byte)
+                downloadedBytes += 1
+
+                if buffer.count >= 64 * 1024 {
+                    try handle.write(contentsOf: buffer)
+                    buffer.removeAll(keepingCapacity: true)
+                }
+
+                guard expectedLength > 0 else { continue }
+                let progress = min(Double(downloadedBytes) / Double(expectedLength), 0.99)
+                if progress - lastReportedProgress >= 0.01 {
+                    lastReportedProgress = progress
+                    await progressDidChange?(progress)
+                }
+            }
+
+            if !buffer.isEmpty {
+                try handle.write(contentsOf: buffer)
+            }
+            try handle.close()
+        } catch {
+            try? handle.close()
+            throw error
+        }
 
         if FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) {
             try FileManager.default.removeItem(at: destination)
         }
         try FileManager.default.moveItem(at: temporaryURL, to: destination)
 
+        didFinish = true
+        await progressDidChange?(1)
         return EpisodeDownload(state: .downloaded, localFileURL: destination, progress: 1)
     }
 
