@@ -30,7 +30,13 @@ struct PlayerView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                EpisodeTimeline(episode: episode, currentTime: currentTime)
+                PlaybackScrubber(
+                    currentTime: currentTime,
+                    duration: max(episode.duration ?? max(episode.analysis.adSegments.map(\.end).max() ?? 1, currentTime + 1), 1),
+                    adSegments: episode.analysis.adSegments
+                ) { seekTime in
+                    Task { await model.seek(to: seekTime) }
+                }
                     .frame(height: 34)
                     .padding(.horizontal)
 
@@ -71,37 +77,5 @@ struct PlayerView: View {
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }
-    }
-}
-
-private struct EpisodeTimeline: View {
-    let episode: PodcastEpisode
-    let currentTime: TimeInterval
-
-    var body: some View {
-        GeometryReader { proxy in
-            let duration = max(episode.duration ?? max(episode.analysis.adSegments.map(\.end).max() ?? 1, currentTime + 1), 1)
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(.quaternary)
-                    .frame(height: 8)
-
-                Capsule()
-                    .fill(Color.accentColor)
-                    .frame(width: proxy.size.width * min(currentTime / duration, 1), height: 8)
-
-                ForEach(episode.analysis.adSegments) { segment in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(.orange)
-                        .frame(
-                            width: max(3, proxy.size.width * ((segment.end - segment.start) / duration)),
-                            height: 18
-                        )
-                        .offset(x: proxy.size.width * (segment.start / duration))
-                }
-            }
-            .frame(maxHeight: .infinity)
-        }
-        .accessibilityLabel("Playback timeline")
     }
 }
