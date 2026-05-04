@@ -29,6 +29,7 @@
 		F7F040DA4A26640E56B4372D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F259627375C74EF13CA2E72F /* Models.swift */; };
 		F84F87682E9EECBAE987328C /* EpisodeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */; };
 		FF98570121D97433BA6A4076 /* TextInputStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243B67A8EA77921235E4B79E /* TextInputStyles.swift */; };
+		AA11223344556677AABBCCDD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677EEFF0011 /* DesignSystem.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,6 +62,7 @@
 		19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVPlayerPlaybackService.swift; sourceTree = "<group>"; };
 		1AECB16C71E750574788BF06 /* JSONEpisodeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONEpisodeStore.swift; sourceTree = "<group>"; };
 		243B67A8EA77921235E4B79E /* TextInputStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInputStyles.swift; sourceTree = "<group>"; };
+		AA11223344556677EEFF0011 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		3201575E7025181845F1191E /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
 		335738CB09DA0F1B0503E241 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		365AE63E73EF78328A69D7D0 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 		28B2A08812B8C45C2152E869 /* TurtlePodApp */ = {
 			isa = PBXGroup;
 			children = (
+				AA11223344556677EEFF0011 /* DesignSystem.swift */,
 				3201575E7025181845F1191E /* DownloadsView.swift */,
 				00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */,
 				365AE63E73EF78328A69D7D0 /* LibraryView.swift */,
@@ -263,6 +266,7 @@
 				1AFB2BE1C7767C6C68D6D2A2 /* PlayerView.swift in Sources */,
 				F52254ACF26B7D56AB938367 /* RootView.swift in Sources */,
 				61C91ED9D4C855F782CD5EB3 /* SettingsView.swift in Sources */,
+				AA11223344556677AABBCCDD /* DesignSystem.swift in Sources */,
 				FF98570121D97433BA6A4076 /* TextInputStyles.swift in Sources */,
 				CF9C3F13C5DB28D4072C6676 /* TurtlePodApp.swift in Sources */,
 				349DA09A7FFC85E9EAE0A7C4 /* TurtlePodModel.swift in Sources */,

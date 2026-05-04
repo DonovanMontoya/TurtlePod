@@ -3,6 +3,7 @@ import TurtlePodCore
 
 struct EpisodeDetailView: View {
     @EnvironmentObject private var model: TurtlePodModel
+    @Environment(\.appTheme) private var theme
     let episodeID: UUID
 
     private var episode: PodcastEpisode? {
@@ -12,163 +13,348 @@ struct EpisodeDetailView: View {
     var body: some View {
         Group {
             if let episode {
-                List {
-                    Section {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .top, spacing: 14) {
-                                AsyncImage(url: episode.artworkURL) { image in
-                                    image.resizable().scaledToFill()
-                                } placeholder: {
-                                    Image(systemName: "waveform")
-                                        .font(.largeTitle)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .frame(width: 88, height: 88)
-                                .background(.quaternary)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                ZStack {
+                    theme.backgroundPrimary.ignoresSafeArea()
 
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(episode.title)
-                                        .font(.title3.weight(.semibold))
-                                    if let publishedAt = episode.publishedAt {
-                                        Text(publishedAt, style: .date)
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            // Header
+                            VStack(spacing: 14) {
+                                HStack(alignment: .top, spacing: 14) {
+                                    ArtworkView(url: episode.artworkURL, size: 100)
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(episode.title)
+                                            .font(.title3.weight(.semibold))
+                                            .foregroundStyle(theme.textPrimary)
+                                        if let publishedAt = episode.publishedAt {
+                                            Text(publishedAt, style: .date)
+                                                .font(.subheadline)
+                                                .foregroundStyle(theme.textSecondary)
+                                        }
+                                        if let duration = episode.duration {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "clock")
+                                                    .font(.caption)
+                                                Text(duration.formattedDuration)
+                                            }
                                             .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(theme.amberMuted)
+                                        }
                                     }
-                                    if let duration = episode.duration {
-                                        Text(duration.formattedDuration)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+
+                                Text(episode.description)
+                                    .font(.subheadline)
+                                    .foregroundStyle(theme.textSecondary)
+                                    .lineSpacing(3)
+                            }
+                            .turtleCard()
+
+                            // Playback
+                            VStack(alignment: .leading, spacing: 12) {
+                                SectionHeader(title: "Playback", icon: "play.circle")
+
+                                Button {
+                                    Task { await model.play(episode) }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "play.fill")
+                                        Text("Play Offline")
+                                            .font(.subheadline.weight(.semibold))
+                                        Spacer()
+                                    }
+                                    .foregroundStyle(episode.download?.state == .downloaded ? theme.backgroundPrimary : theme.textTertiary)
+                                    .padding(12)
+                                    .background(episode.download?.state == .downloaded ? theme.amber : theme.backgroundElevated)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(episode.download?.state != .downloaded)
+
+                                HStack {
+                                    Text("Auto-skip ads")
+                                        .font(.subheadline)
+                                        .foregroundStyle(theme.textPrimary)
+                                    Spacer()
+                                    Toggle("", isOn: Binding(
+                                        get: { episode.autoSkipEnabled },
+                                        set: { enabled in Task { await model.setEpisodeAutoSkip(enabled, episodeID: episode.id) } }
+                                    ))
+                                    .tint(theme.teal)
+                                }
+                                .padding(.horizontal, 4)
+                            }
+                            .turtleCard()
+
+                            // Download
+                            VStack(alignment: .leading, spacing: 12) {
+                                SectionHeader(title: "Download", icon: "arrow.down.circle")
+
+                                DownloadStatusRow(episode: episode)
+
+                                if episode.download?.state == .downloaded {
+                                    Button(role: .destructive) {
+                                        Task { await model.deleteDownload(episode) }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "trash")
+                                            Text("Delete Download")
+                                                .font(.subheadline.weight(.medium))
+                                        }
+                                        .foregroundStyle(theme.destructive)
+                                        .padding(10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(theme.destructive.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    Button {
+                                        Task { await model.download(episode) }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "arrow.down.circle")
+                                            Text("Download Episode")
+                                                .font(.subheadline.weight(.medium))
+                                        }
+                                        .foregroundStyle(theme.amber)
+                                        .padding(10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(theme.amber.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(episode.download?.state == .downloading)
+                                }
+                            }
+                            .turtleCard()
+
+                            // AI Analysis
+                            VStack(alignment: .leading, spacing: 12) {
+                                SectionHeader(title: "AI Analysis", icon: "sparkles")
+
+                                AnalysisStatusRow(
+                                    analysis: episode.analysis,
+                                    transcriptionProgress: model.transcriptionProgress(for: episode.id)
+                                )
+
+                                Button {
+                                    Task { await model.analyze(episode) }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "sparkles")
+                                        Text("Analyze Download")
+                                            .font(.subheadline.weight(.medium))
+                                    }
+                                    .foregroundStyle(
+                                        episode.download?.state == .downloaded && episode.analysis.status != .transcribing && episode.analysis.status != .classifying
+                                        ? theme.teal : theme.textTertiary
+                                    )
+                                    .padding(10)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(theme.teal.opacity(0.1))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(episode.download?.state != .downloaded || episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
+
+                                if !episode.analysis.adSegments.isEmpty {
+                                    VStack(spacing: 8) {
+                                        ForEach(episode.analysis.adSegments) { segment in
+                                            HStack {
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text("\(segment.start.formattedDuration) – \(segment.end.formattedDuration)")
+                                                        .font(.subheadline.weight(.medium).monospacedDigit())
+                                                        .foregroundStyle(theme.textPrimary)
+                                                    Text(segment.reason)
+                                                        .font(.caption)
+                                                        .foregroundStyle(theme.textSecondary)
+                                                }
+                                                Spacer()
+                                                Text("\(Int(segment.confidence * 100))%")
+                                                    .font(.caption.weight(.semibold).monospacedDigit())
+                                                    .foregroundStyle(theme.teal)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 3)
+                                                    .background(theme.teal.opacity(0.12))
+                                                    .clipShape(Capsule())
+                                            }
+                                            .padding(10)
+                                            .background(theme.backgroundElevated)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        }
                                     }
                                 }
                             }
-
-                            Text(episode.description)
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
+                            .turtleCard()
                         }
-                    }
-
-                    Section("Playback") {
-                        Button {
-                            Task { await model.play(episode) }
-                        } label: {
-                            Label("Play Offline", systemImage: "play.fill")
-                        }
-                        .disabled(episode.download?.state != .downloaded)
-
-                        Toggle("Auto-skip for this episode", isOn: Binding(
-                            get: { episode.autoSkipEnabled },
-                            set: { enabled in Task { await model.setEpisodeAutoSkip(enabled, episodeID: episode.id) } }
-                        ))
-                    }
-
-                    Section("Download") {
-                        DownloadStatusRow(episode: episode)
-                        if episode.download?.state == .downloaded {
-                            Button(role: .destructive) {
-                                Task { await model.deleteDownload(episode) }
-                            } label: {
-                                Label("Delete Download", systemImage: "trash")
-                            }
-                        } else {
-                            Button {
-                                Task { await model.download(episode) }
-                            } label: {
-                                Label("Download Episode", systemImage: "arrow.down.circle")
-                            }
-                            .disabled(episode.download?.state == .downloading)
-                        }
-                    }
-
-                    Section("AI Analysis") {
-                        AnalysisStatusRow(
-                            analysis: episode.analysis,
-                            transcriptionProgress: model.transcriptionProgress(for: episode.id)
-                        )
-                        Button {
-                            Task { await model.analyze(episode) }
-                        } label: {
-                            Label("Analyze Download", systemImage: "sparkles")
-                        }
-                        .disabled(episode.download?.state != .downloaded || episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
-
-                        ForEach(episode.analysis.adSegments) { segment in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("\(segment.start.formattedDuration) - \(segment.end.formattedDuration)")
-                                    .font(.callout.weight(.medium))
-                                Text("\(Int(segment.confidence * 100))% confidence - \(segment.reason)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+                        .padding(16)
                     }
                 }
+                .background(theme.backgroundPrimary)
                 .navigationTitle("Episode")
+                .turtleNavBarBackground(theme)
             } else {
-                ContentUnavailableView("Episode Not Found", systemImage: "questionmark.circle")
+                ZStack {
+                    theme.backgroundPrimary.ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 40, weight: .light))
+                            .foregroundStyle(theme.textTertiary)
+                        Text("Episode Not Found")
+                            .foregroundStyle(theme.textSecondary)
+                    }
+                }
             }
+        }
+    }
+}
+
+private struct SectionHeader: View {
+    @Environment(\.appTheme) private var theme
+    let title: String
+    let icon: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(theme.amberMuted)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(theme.textTertiary)
+                .textCase(.uppercase)
+                .tracking(0.8)
         }
     }
 }
 
 private struct DownloadStatusRow: View {
+    @Environment(\.appTheme) private var theme
     let episode: PodcastEpisode
 
     var body: some View {
         switch episode.download?.state ?? .notDownloaded {
         case .notDownloaded:
-            Label("Not downloaded", systemImage: "icloud")
+            HStack(spacing: 8) {
+                Image(systemName: "icloud")
+                    .foregroundStyle(theme.textTertiary)
+                Text("Not downloaded")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            }
         case .downloading:
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("Downloading", systemImage: "arrow.down.circle")
+                    Image(systemName: "arrow.down.circle")
+                        .foregroundStyle(theme.amber)
+                    Text("Downloading")
+                        .font(.subheadline)
+                        .foregroundStyle(theme.textPrimary)
                     Spacer()
                     Text((episode.download?.progress ?? 0).formattedPercentage)
                         .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.amber)
                 }
-                ProgressView(value: episode.download?.progress ?? 0)
+                AmberProgressBar(value: episode.download?.progress ?? 0)
             }
         case .downloaded:
-            Label("Available offline", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(theme.success)
+                Text("Available offline")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textPrimary)
+            }
         case .failed:
-            Label(episode.download?.errorMessage ?? "Download failed", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.red)
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(theme.destructive)
+                Text(episode.download?.errorMessage ?? "Download failed")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.destructive)
+            }
         }
     }
 }
 
 private struct AnalysisStatusRow: View {
+    @Environment(\.appTheme) private var theme
     let analysis: EpisodeAnalysis
     let transcriptionProgress: Double?
 
     var body: some View {
         switch analysis.status {
         case .notStarted:
-            Label("Not analyzed", systemImage: "circle")
+            HStack(spacing: 8) {
+                Image(systemName: "circle")
+                    .foregroundStyle(theme.textTertiary)
+                Text("Not analyzed")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            }
         case .queued:
-            Label("Queued", systemImage: "clock")
+            HStack(spacing: 8) {
+                Image(systemName: "clock")
+                    .foregroundStyle(theme.amberMuted)
+                Text("Queued")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            }
         case .transcribing:
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("Transcribing", systemImage: "waveform")
+                    Image(systemName: "waveform")
+                        .foregroundStyle(theme.teal)
+                    Text("Transcribing")
+                        .font(.subheadline)
+                        .foregroundStyle(theme.textPrimary)
                     Spacer()
                     Text((transcriptionProgress ?? 0).formattedPercentage)
                         .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.teal)
                 }
-                ProgressView(value: transcriptionProgress ?? 0)
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(theme.backgroundElevated)
+                            .frame(height: 4)
+                        Capsule()
+                            .fill(theme.teal)
+                            .frame(width: proxy.size.width * min(max(transcriptionProgress ?? 0, 0), 1), height: 4)
+                            .shadow(color: theme.teal.opacity(0.3), radius: 4, y: 0)
+                    }
+                    .frame(maxHeight: .infinity, alignment: .center)
+                }
+                .frame(height: 4)
             }
         case .classifying:
-            ProgressView("Classifying")
+            HStack(spacing: 8) {
+                ProgressView()
+                    .tint(theme.teal)
+                    .scaleEffect(0.8)
+                Text("Classifying")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textPrimary)
+            }
         case .complete:
-            Label("Complete", systemImage: "checkmark.seal.fill")
-                .foregroundStyle(.green)
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(theme.teal)
+                Text("Complete")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textPrimary)
+            }
         case .failed:
-            Label(analysis.errorMessage ?? "Analysis failed", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.red)
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(theme.destructive)
+                Text(analysis.errorMessage ?? "Analysis failed")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.destructive)
+            }
         }
     }
 }
