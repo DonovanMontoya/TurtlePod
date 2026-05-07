@@ -12,12 +12,20 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
     DEVELOPMENT_TEAM: ""
 
+packages:
+  WhisperKit:
+    url: https://github.com/argmaxinc/WhisperKit.git
+    from: 1.0.0
+
 targets:
   TurtlePodCore:
     type: framework
     platform: iOS
     sources:
       - path: Sources/TurtlePodCore
+    dependencies:
+      - package: WhisperKit
+        product: WhisperKit
     info:
       path: Generated/TurtlePodCore-Info.plist
       properties:

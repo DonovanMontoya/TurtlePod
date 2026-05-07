@@ -12,9 +12,15 @@ let package = Package(
         .library(name: "TurtlePodCore", targets: ["TurtlePodCore"]),
         .executable(name: "TurtlePodApp", targets: ["TurtlePodApp"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "1.0.0")
+    ],
     targets: [
         .target(
             name: "TurtlePodCore",
+            dependencies: [
+                .product(name: "WhisperKit", package: "WhisperKit")
+            ],
             resources: [
                 .process("Resources")
             ]

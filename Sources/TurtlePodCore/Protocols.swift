@@ -45,17 +45,24 @@ public extension TranscriptService {
 }
 
 public protocol AdDetectionService: Sendable {
-    func detectAds(in transcript: [TranscriptChunk], apiKey: String) async throws -> [AdSegment]
+    func detectAds(in transcript: [TranscriptChunk]) async throws -> [AdSegment]
 }
 
-public protocol AIProvider: Sendable {
+public protocol TranscriptionProvider: Sendable {
     var providerName: String { get }
     var transcriptionModel: String { get }
-    var classificationModel: String { get }
 
     func transcribe(audioFile: URL, apiKey: String) async throws -> [TranscriptChunk]
+}
+
+public protocol AdClassificationProvider: Sendable {
+    var providerName: String { get }
+    var classificationModel: String { get }
+
     func classify(transcript: [TranscriptChunk], apiKey: String) async throws -> [AdSegment]
 }
+
+public typealias AIProvider = TranscriptionProvider & AdClassificationProvider
 
 public protocol EpisodeStore: Sendable {
     func loadFeeds() async throws -> [PodcastFeed]
@@ -78,6 +85,8 @@ public enum TurtlePodError: Error, LocalizedError, Equatable {
     case notDownloaded
     case apiKeyMissing
     case unsupportedResponse
+    case localModelUnavailable(String)
+    case localModelGenerationFailed(String)
     case audioInspectionFailed(String)
     case keychain(OSStatus)
 
@@ -93,6 +102,10 @@ public enum TurtlePodError: Error, LocalizedError, Equatable {
             "Add an OpenAI API key before running AI analysis."
         case .unsupportedResponse:
             "The service returned an unsupported response."
+        case .localModelUnavailable(let message):
+            message
+        case .localModelGenerationFailed(let message):
+            message
         case .audioInspectionFailed(let message):
             "The downloaded audio file could not be inspected: \(message)"
         case .keychain(let status):

@@ -52,20 +52,11 @@ public final class OpenAIProvider: AIProvider {
         Do not pad ranges to 30-second increments, chapter boundaries, or whole transcript windows.
         """
 
-        let payload: [String: Any] = [
-            "model": classificationModel,
-            "input": [
-                [
-                    "role": "system",
-                    "content": schemaInstruction
-                ],
-                [
-                    "role": "user",
-                    "content": windows
-                ]
-            ],
-            "temperature": 0
-        ]
+        let payload = Self.classificationRequestPayload(
+            model: classificationModel,
+            schemaInstruction: schemaInstruction,
+            transcriptWindowText: windows
+        )
 
         var request = URLRequest(url: baseURL.appending(path: "responses"))
         request.httpMethod = "POST"
@@ -132,6 +123,78 @@ public final class OpenAIProvider: AIProvider {
         transcript.map { chunk in
             "[\(formatTimestamp(chunk.start))-\(formatTimestamp(chunk.end))] \(chunk.text)"
         }.joined(separator: "\n")
+    }
+
+    public static func classificationRequestPayload(
+        model: String,
+        schemaInstruction: String,
+        transcriptWindowText: String
+    ) -> [String: Any] {
+        [
+            "model": model,
+            "input": [
+                [
+                    "type": "message",
+                    "role": "system",
+                    "content": [
+                        [
+                            "type": "input_text",
+                            "text": schemaInstruction
+                        ]
+                    ]
+                ],
+                [
+                    "type": "message",
+                    "role": "user",
+                    "content": [
+                        [
+                            "type": "input_text",
+                            "text": transcriptWindowText
+                        ]
+                    ]
+                ]
+            ],
+            "text": [
+                "format": [
+                    "type": "json_schema",
+                    "name": "podcast_ad_segments",
+                    "strict": true,
+                    "schema": [
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": [
+                            "ad_segments": [
+                                "type": "array",
+                                "items": [
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": [
+                                        "start": [
+                                            "type": "number",
+                                            "description": "Ad segment start time in seconds."
+                                        ],
+                                        "end": [
+                                            "type": "number",
+                                            "description": "Ad segment end time in seconds."
+                                        ],
+                                        "confidence": [
+                                            "type": "number",
+                                            "minimum": 0,
+                                            "maximum": 1
+                                        ],
+                                        "reason": [
+                                            "type": "string"
+                                        ]
+                                    ],
+                                    "required": ["start", "end", "confidence", "reason"]
+                                ]
+                            ]
+                        ],
+                        "required": ["ad_segments"]
+                    ]
+                ]
+            ]
+        ]
     }
 
     public static func parseClassificationResponse(_ data: Data, provider: String, model: String) throws -> [AdSegment] {

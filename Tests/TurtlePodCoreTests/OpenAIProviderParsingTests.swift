@@ -36,6 +36,36 @@ final class OpenAIProviderParsingTests: XCTestCase {
         )
     }
 
+    func testBuildsResponsesClassificationPayloadWithTypedInputAndJSONSchema() throws {
+        let payload = OpenAIProvider.classificationRequestPayload(
+            model: "gpt-4o-mini",
+            schemaInstruction: "Return ad JSON.",
+            transcriptWindowText: "[0.0-4.0] Use code TURTLE."
+        )
+
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        XCTAssertNil(object["temperature"])
+        let input = try XCTUnwrap(object["input"] as? [[String: Any]])
+        XCTAssertEqual(input.count, 2)
+        XCTAssertEqual(input[0]["type"] as? String, "message")
+        XCTAssertEqual(input[0]["role"] as? String, "system")
+
+        let systemContent = try XCTUnwrap(input[0]["content"] as? [[String: Any]])
+        XCTAssertEqual(systemContent[0]["type"] as? String, "input_text")
+        XCTAssertEqual(systemContent[0]["text"] as? String, "Return ad JSON.")
+
+        let text = try XCTUnwrap(object["text"] as? [String: Any])
+        let format = try XCTUnwrap(text["format"] as? [String: Any])
+        XCTAssertEqual(format["type"] as? String, "json_schema")
+        XCTAssertEqual(format["strict"] as? Bool, true)
+
+        let schema = try XCTUnwrap(format["schema"] as? [String: Any])
+        XCTAssertEqual(schema["additionalProperties"] as? Bool, false)
+        XCTAssertEqual(schema["required"] as? [String], ["ad_segments"])
+    }
+
     func testUsesAudioContentTypeForFileExtension() {
         XCTAssertEqual(OpenAIProvider.audioContentType(for: URL(fileURLWithPath: "/tmp/audio.m4a")), "audio/mp4")
         XCTAssertEqual(OpenAIProvider.audioContentType(for: URL(fileURLWithPath: "/tmp/audio.wav")), "audio/wav")

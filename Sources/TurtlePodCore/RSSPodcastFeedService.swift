@@ -146,7 +146,7 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             currentItem?.title = text
         case "description", "content:encoded":
             if currentItem?.description.isEmpty == true {
-                currentItem?.description = text.strippingHTML()
+                currentItem?.description = EpisodeDescriptionCleaner.clean(text)
             }
         case "itunes:duration":
             currentItem?.duration = DurationParser.parse(text)
@@ -228,15 +228,5 @@ enum DateParser {
             }
         }
         return ISO8601DateFormatter().date(from: rawValue)
-    }
-}
-
-private extension String {
-    func strippingHTML() -> String {
-        replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&#39;", with: "'")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

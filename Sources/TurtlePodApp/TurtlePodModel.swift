@@ -9,6 +9,7 @@ final class TurtlePodModel: ObservableObject {
     @Published var apiKeyDraft = ""
     @Published var statusMessage: String?
     @Published var activeSkipEvent: SkipEvent?
+    @Published var selectedWhisperModelIsDownloaded = false
     @Published private var transcriptionProgressByEpisodeID: [UUID: Double] = [:]
 
     let playback: AVPlayerPlaybackService
@@ -16,7 +17,7 @@ final class TurtlePodModel: ObservableObject {
     private let downloadService: EpisodeDownloadService
     private let store: EpisodeStore
     private let keyStore: APIKeyStore
-    private let analysisPipeline: EpisodeAnalysisPipeline
+    private let openAIProvider: OpenAIProvider
     private let autoSkipController: AutoSkipController
 
     static func makeDefault() -> TurtlePodModel {
@@ -30,16 +31,7 @@ final class TurtlePodModel: ObservableObject {
             playback: playback,
             store: store,
             keyStore: keyStore,
-            analysisPipeline: EpisodeAnalysisPipeline(
-                transcriptService: DefaultTranscriptService(provider: provider),
-                adDetectionService: DefaultAdDetectionService(provider: provider),
-                apiKeyStore: keyStore,
-                providerMetadata: AIProviderMetadata(
-                    provider: provider.providerName,
-                    transcriptionModel: provider.transcriptionModel,
-                    classificationModel: provider.classificationModel
-                )
-            ),
+            openAIProvider: provider,
             autoSkipController: AutoSkipController(playback: playback, store: store)
         )
     }
@@ -50,7 +42,7 @@ final class TurtlePodModel: ObservableObject {
         playback: AVPlayerPlaybackService,
         store: EpisodeStore,
         keyStore: APIKeyStore,
-        analysisPipeline: EpisodeAnalysisPipeline,
+        openAIProvider: OpenAIProvider,
         autoSkipController: AutoSkipController
     ) {
         self.feedService = feedService
@@ -58,7 +50,7 @@ final class TurtlePodModel: ObservableObject {
         self.playback = playback
         self.store = store
         self.keyStore = keyStore
-        self.analysisPipeline = analysisPipeline
+        self.openAIProvider = openAIProvider
         self.autoSkipController = autoSkipController
     }
 
@@ -79,15 +71,38 @@ final class TurtlePodModel: ObservableObject {
     func load() async {
         do {
             feeds = try await store.loadFeeds()
+            let cleanedSavedDescriptions = cleanSavedEpisodeDescriptions()
             let removedStaleDownloads = clearStaleDownloads()
-            if removedStaleDownloads {
+            if cleanedSavedDescriptions || removedStaleDownloads {
                 try await persistFeeds()
             }
             settings = try await store.loadSettings()
             apiKeyDraft = (try keyStore.loadOpenAIKey()) ?? ""
+            await refreshSelectedWhisperModelStatus()
         } catch {
             statusMessage = error.localizedDescription
         }
+    }
+
+    @discardableResult
+    private func cleanSavedEpisodeDescriptions() -> Bool {
+        var didChange = false
+
+        for feedIndex in feeds.indices {
+            for episodeIndex in feeds[feedIndex].episodes.indices {
+                let cleaned = EpisodeDescriptionCleaner.clean(feeds[feedIndex].episodes[episodeIndex].description)
+                if cleaned != feeds[feedIndex].episodes[episodeIndex].description {
+                    feeds[feedIndex].episodes[episodeIndex].description = cleaned
+                    didChange = true
+                }
+            }
+        }
+
+        return didChange
+    }
+
+    func refreshSelectedWhisperModelStatus() async {
+        selectedWhisperModelIsDownloaded = await WhisperModelManager.shared.isModelDownloaded(size: settings.whisperModelSize)
     }
 
     func addFeed(urlString: String) async {
@@ -162,6 +177,17 @@ final class TurtlePodModel: ObservableObject {
         setTranscriptionProgress(0, for: episode.id)
 
         do {
+            let analysisPipeline = try makeAnalysisPipeline()
+            let providerMetadata = await analysisPipeline.metadata
+            let transcriptionLabel = analysisStatusLabel(
+                provider: providerMetadata.transcriptionProvider,
+                model: providerMetadata.transcriptionModel
+            )
+            let classificationLabel = analysisStatusLabel(
+                provider: providerMetadata.classificationProvider,
+                model: providerMetadata.classificationModel
+            )
+            statusMessage = "Transcribing with \(transcriptionLabel)..."
             let analysis = try await analysisPipeline.analyze(
                 episode,
                 statusDidChange: { status in
@@ -169,21 +195,27 @@ final class TurtlePodModel: ObservableObject {
                         episode.analysis.status = status
                     }
                     if status == .classifying {
-                        self.statusMessage = "Classifying transcript for ads..."
+                        self.statusMessage = "Classifying ads with \(classificationLabel)..."
                     }
                 },
                 transcriptionProgressDidChange: { currentChunk, totalChunks in
                     let progress = totalChunks > 0 ? Double(currentChunk) / Double(totalChunks) : 0
                     self.setTranscriptionProgress(progress, for: episode.id)
-                    self.statusMessage = "Transcribing audio chunk \(currentChunk) of \(totalChunks)..."
+                    self.statusMessage = "Transcribing with \(transcriptionLabel): chunk \(currentChunk) of \(totalChunks)..."
                 }
             )
             await updateEpisode(episode.id) { episode in
                 episode.analysis = analysis
             }
+            if settings.aiTranscriptionProvider == .localWhisper {
+                await refreshSelectedWhisperModelStatus()
+            }
             setTranscriptionProgress(nil, for: episode.id)
             statusMessage = "Analysis complete."
         } catch {
+            if settings.aiTranscriptionProvider == .localWhisper {
+                await refreshSelectedWhisperModelStatus()
+            }
             await updateEpisode(episode.id) { episode in
                 episode.analysis.status = .failed
                 episode.analysis.errorMessage = error.localizedDescription
@@ -191,6 +223,54 @@ final class TurtlePodModel: ObservableObject {
             setTranscriptionProgress(nil, for: episode.id)
             statusMessage = error.localizedDescription
         }
+    }
+
+    func reanalyzeAds(_ episode: PodcastEpisode) async {
+        guard settings.aiAnalysisEnabled else {
+            statusMessage = "Enable AI analysis in Settings first."
+            return
+        }
+        guard !episode.analysis.transcript.isEmpty else {
+            statusMessage = "Analyze the download once before re-analyzing ads."
+            return
+        }
+
+        do {
+            let context = try makeAdDetectionContext(existingMetadata: episode.analysis.providerMetadata)
+            let classificationLabel = analysisStatusLabel(
+                provider: context.providerMetadata.classificationProvider,
+                model: context.providerMetadata.classificationModel
+            )
+            await updateEpisode(episode.id) { episode in
+                episode.analysis.status = .classifying
+                episode.analysis.errorMessage = nil
+            }
+            statusMessage = "Classifying ads with \(classificationLabel)..."
+
+            let adSegments = try await context.adDetectionService.detectAds(in: episode.analysis.transcript)
+            await updateEpisode(episode.id) { episode in
+                episode.analysis.status = .complete
+                episode.analysis.adSegments = adSegments
+                episode.analysis.providerMetadata = context.providerMetadata
+                episode.analysis.errorMessage = nil
+            }
+            statusMessage = "Ad analysis updated."
+        } catch {
+            await updateEpisode(episode.id) { episode in
+                episode.analysis.status = .failed
+                episode.analysis.errorMessage = error.localizedDescription
+            }
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    var needsOpenAIKey: Bool {
+        settings.aiTranscriptionProvider == .openAI
+            || settings.aiClassificationProvider == .openAI
+    }
+
+    var appleFoundationModelsAvailabilityMessage: String {
+        AppleFoundationModelsAdClassifier.availabilityStatusMessage
     }
 
     func play(_ episode: PodcastEpisode) async {
@@ -302,6 +382,102 @@ final class TurtlePodModel: ObservableObject {
         transcriptionProgressByEpisodeID = nextProgress
     }
 
+    private func analysisStatusLabel(provider: String, model: String) -> String {
+        "\(analysisProviderDisplayName(provider)) (\(model))"
+    }
+
+    private func analysisProviderDisplayName(_ provider: String) -> String {
+        switch provider {
+        case "openai":
+            "OpenAI"
+        case "local-whisper":
+            "Local Whisper"
+        case "apple-foundation-models":
+            "Apple On-Device"
+        default:
+            provider
+        }
+    }
+
+    private func makeAnalysisPipeline() throws -> EpisodeAnalysisPipeline {
+        let transcriptionProvider: TranscriptionProvider
+        let apiKey: String
+
+        let needsOpenAIKey = settings.aiTranscriptionProvider == .openAI
+            || settings.aiClassificationProvider == .openAI
+
+        if needsOpenAIKey {
+            guard let openAIAPIKey = try keyStore.loadOpenAIKey(), !openAIAPIKey.isEmpty else {
+                throw TurtlePodError.apiKeyMissing
+            }
+            apiKey = openAIAPIKey
+        } else {
+            apiKey = ""
+        }
+
+        switch settings.aiTranscriptionProvider {
+        case .openAI:
+            transcriptionProvider = openAIProvider
+        case .localWhisper:
+            transcriptionProvider = LocalWhisperProvider(modelSize: settings.whisperModelSize)
+        }
+
+        let context = try makeAdDetectionContext(
+            openAIAPIKey: apiKey.isEmpty ? nil : apiKey,
+            existingMetadata: nil
+        )
+
+        return EpisodeAnalysisPipeline(
+            transcriptService: DefaultTranscriptService(provider: transcriptionProvider),
+            adDetectionService: context.adDetectionService,
+            transcriptionAPIKey: apiKey,
+            requiresTranscriptionAPIKey: settings.aiTranscriptionProvider == .openAI,
+            providerMetadata: AIProviderMetadata(
+                provider: transcriptionProvider.providerName,
+                transcriptionProvider: transcriptionProvider.providerName,
+                transcriptionModel: transcriptionProvider.transcriptionModel,
+                classificationProvider: context.providerMetadata.classificationProvider,
+                classificationModel: context.providerMetadata.classificationModel
+            )
+        )
+    }
+
+    private func makeAdDetectionContext(
+        openAIAPIKey providedOpenAIAPIKey: String? = nil,
+        existingMetadata: AIProviderMetadata?
+    ) throws -> AdDetectionContext {
+        let classificationProvider: AdClassificationProvider
+        let classificationAPIKey: String
+
+        switch settings.aiClassificationProvider {
+        case .openAI:
+            let openAIAPIKey = try providedOpenAIAPIKey ?? keyStore.loadOpenAIKey()
+            guard let openAIAPIKey, !openAIAPIKey.isEmpty else {
+                throw TurtlePodError.apiKeyMissing
+            }
+            classificationProvider = openAIProvider
+            classificationAPIKey = openAIAPIKey
+        case .appleFoundationModels:
+            try AppleFoundationModelsAdClassifier.validateAvailability()
+            classificationProvider = AppleFoundationModelsAdClassifier()
+            classificationAPIKey = ""
+        }
+
+        return AdDetectionContext(
+            adDetectionService: DefaultAdDetectionService(
+                provider: classificationProvider,
+                apiKey: classificationAPIKey
+            ),
+            providerMetadata: AIProviderMetadata(
+                provider: classificationProvider.providerName,
+                transcriptionProvider: existingMetadata?.transcriptionProvider ?? openAIProvider.providerName,
+                transcriptionModel: existingMetadata?.transcriptionModel ?? openAIProvider.transcriptionModel,
+                classificationProvider: classificationProvider.providerName,
+                classificationModel: classificationProvider.classificationModel
+            )
+        )
+    }
+
     private func ensureDownloadFileExists(for episodeID: UUID) async -> Bool {
         guard let episode = episode(withID: episodeID),
               episode.download?.state == .downloaded else {
@@ -373,4 +549,9 @@ final class TurtlePodModel: ObservableObject {
     private func persistFeeds() async throws {
         try await store.saveFeeds(feeds)
     }
+}
+
+private struct AdDetectionContext {
+    var adDetectionService: AdDetectionService
+    var providerMetadata: AIProviderMetadata
 }

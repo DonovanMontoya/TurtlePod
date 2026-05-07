@@ -45,7 +45,7 @@ struct EpisodeDetailView: View {
                                     Spacer()
                                 }
 
-                                Text(episode.description)
+                                Text(EpisodeDescriptionCleaner.clean(episode.description))
                                     .font(.subheadline)
                                     .foregroundStyle(theme.textSecondary)
                                     .lineSpacing(3)
@@ -137,6 +137,8 @@ struct EpisodeDetailView: View {
 
                                 AnalysisStatusRow(
                                     analysis: episode.analysis,
+                                    transcriptionLabel: transcriptionStatusLabel(for: episode),
+                                    classificationLabel: classificationStatusLabel(for: episode),
                                     transcriptionProgress: model.transcriptionProgress(for: episode.id)
                                 )
 
@@ -159,6 +161,28 @@ struct EpisodeDetailView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(episode.download?.state != .downloaded || episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
+
+                                if !episode.analysis.transcript.isEmpty {
+                                    Button {
+                                        Task { await model.reanalyzeAds(episode) }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "arrow.clockwise")
+                                            Text("Re-analyze Ads")
+                                                .font(.subheadline.weight(.medium))
+                                        }
+                                        .foregroundStyle(
+                                            episode.analysis.status != .transcribing && episode.analysis.status != .classifying
+                                            ? theme.amber : theme.textTertiary
+                                        )
+                                        .padding(10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(theme.amber.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
+                                }
 
                                 if !episode.analysis.adSegments.isEmpty {
                                     VStack(spacing: 8) {
@@ -208,6 +232,49 @@ struct EpisodeDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func transcriptionStatusLabel(for episode: PodcastEpisode) -> String {
+        if let metadata = episode.analysis.providerMetadata {
+            return analysisStatusLabel(provider: metadata.transcriptionProvider, model: metadata.transcriptionModel)
+        }
+
+        switch model.settings.aiTranscriptionProvider {
+        case .openAI:
+            return analysisStatusLabel(provider: "openai", model: "whisper-1")
+        case .localWhisper:
+            return analysisStatusLabel(provider: "local-whisper", model: "whisper-\(model.settings.whisperModelSize.rawValue)")
+        }
+    }
+
+    private func classificationStatusLabel(for episode: PodcastEpisode) -> String {
+        if let metadata = episode.analysis.providerMetadata {
+            return analysisStatusLabel(provider: metadata.classificationProvider, model: metadata.classificationModel)
+        }
+
+        switch model.settings.aiClassificationProvider {
+        case .openAI:
+            return analysisStatusLabel(provider: "openai", model: "gpt-4o-mini")
+        case .appleFoundationModels:
+            return analysisStatusLabel(provider: "apple-foundation-models", model: "system-language-model")
+        }
+    }
+
+    private func analysisStatusLabel(provider: String, model: String) -> String {
+        "\(analysisProviderDisplayName(provider)) (\(model))"
+    }
+
+    private func analysisProviderDisplayName(_ provider: String) -> String {
+        switch provider {
+        case "openai":
+            "OpenAI"
+        case "local-whisper":
+            "Local Whisper"
+        case "apple-foundation-models":
+            "Apple On-Device"
+        default:
+            provider
         }
     }
 }
@@ -283,6 +350,8 @@ private struct DownloadStatusRow: View {
 private struct AnalysisStatusRow: View {
     @Environment(\.appTheme) private var theme
     let analysis: EpisodeAnalysis
+    let transcriptionLabel: String
+    let classificationLabel: String
     let transcriptionProgress: Double?
 
     var body: some View {
@@ -308,9 +377,10 @@ private struct AnalysisStatusRow: View {
                 HStack {
                     Image(systemName: "waveform")
                         .foregroundStyle(theme.teal)
-                    Text("Transcribing")
+                    Text("Transcribing with \(transcriptionLabel)")
                         .font(.subheadline)
                         .foregroundStyle(theme.textPrimary)
+                        .lineLimit(2)
                     Spacer()
                     Text((transcriptionProgress ?? 0).formattedPercentage)
                         .font(.caption.monospacedDigit())
@@ -335,9 +405,10 @@ private struct AnalysisStatusRow: View {
                 ProgressView()
                     .tint(theme.teal)
                     .scaleEffect(0.8)
-                Text("Classifying")
+                Text("Classifying with \(classificationLabel)")
                     .font(.subheadline)
                     .foregroundStyle(theme.textPrimary)
+                    .lineLimit(2)
             }
         case .complete:
             HStack(spacing: 8) {

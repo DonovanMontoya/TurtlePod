@@ -152,15 +152,45 @@ public struct AdSegment: Identifiable, Codable, Equatable, Sendable {
 
 public struct AIProviderMetadata: Codable, Equatable, Sendable {
     public var provider: String
+    public var transcriptionProvider: String
     public var transcriptionModel: String
+    public var classificationProvider: String
     public var classificationModel: String
     public var createdAt: Date
 
-    public init(provider: String, transcriptionModel: String, classificationModel: String, createdAt: Date = Date()) {
+    public init(
+        provider: String,
+        transcriptionProvider: String? = nil,
+        transcriptionModel: String,
+        classificationProvider: String? = nil,
+        classificationModel: String,
+        createdAt: Date = Date()
+    ) {
         self.provider = provider
+        self.transcriptionProvider = transcriptionProvider ?? provider
         self.transcriptionModel = transcriptionModel
+        self.classificationProvider = classificationProvider ?? provider
         self.classificationModel = classificationModel
         self.createdAt = createdAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case provider
+        case transcriptionProvider
+        case transcriptionModel
+        case classificationProvider
+        case classificationModel
+        case createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try container.decode(String.self, forKey: .provider)
+        transcriptionProvider = try container.decodeIfPresent(String.self, forKey: .transcriptionProvider) ?? provider
+        transcriptionModel = try container.decode(String.self, forKey: .transcriptionModel)
+        classificationProvider = try container.decodeIfPresent(String.self, forKey: .classificationProvider) ?? provider
+        classificationModel = try container.decode(String.self, forKey: .classificationModel)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
     }
 }
 
@@ -182,14 +212,70 @@ public struct SkipEvent: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
+public enum AIClassificationProviderKind: String, Codable, CaseIterable, Equatable, Sendable {
+    case openAI
+    case appleFoundationModels
+}
+
+public enum AITranscriptionProviderKind: String, Codable, CaseIterable, Equatable, Sendable {
+    case openAI
+    case localWhisper
+}
+
+public enum WhisperModelSize: String, Codable, CaseIterable, Equatable, Sendable {
+    case tiny
+    case base
+    case small
+
+    public var displayName: String {
+        switch self {
+        case .tiny: "Tiny (~39 MB)"
+        case .base: "Base (~142 MB)"
+        case .small: "Small (~462 MB)"
+        }
+    }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
     public var aiAnalysisEnabled: Bool
+    public var aiClassificationProvider: AIClassificationProviderKind
+    public var aiTranscriptionProvider: AITranscriptionProviderKind
+    public var whisperModelSize: WhisperModelSize
     public var autoSkipEnabled: Bool
     public var adSkipConfidenceThreshold: Double
 
-    public init(aiAnalysisEnabled: Bool = false, autoSkipEnabled: Bool = true, adSkipConfidenceThreshold: Double = 0.72) {
+    public init(
+        aiAnalysisEnabled: Bool = false,
+        aiClassificationProvider: AIClassificationProviderKind = .openAI,
+        aiTranscriptionProvider: AITranscriptionProviderKind = .openAI,
+        whisperModelSize: WhisperModelSize = .base,
+        autoSkipEnabled: Bool = true,
+        adSkipConfidenceThreshold: Double = 0.72
+    ) {
         self.aiAnalysisEnabled = aiAnalysisEnabled
+        self.aiClassificationProvider = aiClassificationProvider
+        self.aiTranscriptionProvider = aiTranscriptionProvider
+        self.whisperModelSize = whisperModelSize
         self.autoSkipEnabled = autoSkipEnabled
         self.adSkipConfidenceThreshold = adSkipConfidenceThreshold
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case aiAnalysisEnabled
+        case aiClassificationProvider
+        case aiTranscriptionProvider
+        case whisperModelSize
+        case autoSkipEnabled
+        case adSkipConfidenceThreshold
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        aiAnalysisEnabled = try container.decodeIfPresent(Bool.self, forKey: .aiAnalysisEnabled) ?? false
+        aiClassificationProvider = try container.decodeIfPresent(AIClassificationProviderKind.self, forKey: .aiClassificationProvider) ?? .openAI
+        aiTranscriptionProvider = try container.decodeIfPresent(AITranscriptionProviderKind.self, forKey: .aiTranscriptionProvider) ?? .openAI
+        whisperModelSize = try container.decodeIfPresent(WhisperModelSize.self, forKey: .whisperModelSize) ?? .base
+        autoSkipEnabled = try container.decodeIfPresent(Bool.self, forKey: .autoSkipEnabled) ?? true
+        adSkipConfidenceThreshold = try container.decodeIfPresent(Double.self, forKey: .adSkipConfidenceThreshold) ?? 0.72
     }
 }

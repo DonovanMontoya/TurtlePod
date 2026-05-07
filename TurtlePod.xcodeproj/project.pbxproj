@@ -11,14 +11,19 @@
 		0BB61568ADB0463326546C15 /* TurtlePodCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		15BAC0B05ABFAC50A66A081C /* RSSPodcastFeedService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E47A9C0029E566640A85C16 /* RSSPodcastFeedService.swift */; };
 		15DF98260A9A4202C0CE36D3 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365AE63E73EF78328A69D7D0 /* LibraryView.swift */; };
+		1A755ECE57579CAB85C49646 /* EpisodeDescriptionCleaner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC4F2F803545C482B4D0EB2 /* EpisodeDescriptionCleaner.swift */; };
 		1AFB2BE1C7767C6C68D6D2A2 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CEEC883919C8E70DF458ECE /* PlayerView.swift */; };
 		1B19564511D1D1B704520A84 /* AdSegmentUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106BBE5DFC5261FD8C245A58 /* AdSegmentUtilities.swift */; };
+		2875B501C22F8661F9C2EA99 /* AppleFoundationModelsAdClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */; };
 		349DA09A7FFC85E9EAE0A7C4 /* TurtlePodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD6BC3766DB886AF7886B4C5 /* TurtlePodModel.swift */; };
 		37702E5C629DA4B8242E3EF3 /* TurtlePodCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */; };
 		3FC4CADB464DCD7C209AB41A /* AVPlayerPlaybackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */; };
+		47907FAEA58E4FFA1A9C0D35 /* LocalWhisperProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 463BF31C5B05745B025A4230 /* LocalWhisperProvider.swift */; };
+		55465DC71EC013FC1E9B84B4 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 88F6E5C09EAEA4DBFA1A6023 /* WhisperKit */; };
 		5A10DA0B3F01AF59A4EEA445 /* AIAnalysisPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */; };
 		5AAC32D5F5953BDC3B9422AC /* AudioChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B04E7E5CE700AEA965E20A18 /* AudioChunker.swift */; };
 		61C91ED9D4C855F782CD5EB3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335738CB09DA0F1B0503E241 /* SettingsView.swift */; };
+		7D65901F1B7D2748402AB92D /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E98B5C5BE3F800EB22E0D2 /* WhisperModelManager.swift */; };
 		874830402D9C6F3815ABFD69 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */; };
 		97E8D3242E87E3D13DCEDF92 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3201575E7025181845F1191E /* DownloadsView.swift */; };
 		B46B42577BA7801FCD52E4D0 /* KeychainOpenAIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */; };
@@ -28,8 +33,8 @@
 		F52254ACF26B7D56AB938367 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2507707DC469B017EF69752 /* RootView.swift */; };
 		F7F040DA4A26640E56B4372D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F259627375C74EF13CA2E72F /* Models.swift */; };
 		F84F87682E9EECBAE987328C /* EpisodeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */; };
+		FC2A7B0F7363F9FA23C3AF49 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59AA65D47A27B492E08833D5 /* DesignSystem.swift */; };
 		FF98570121D97433BA6A4076 /* TextInputStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243B67A8EA77921235E4B79E /* TextInputStyles.swift */; };
-		AA11223344556677AABBCCDD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677EEFF0011 /* DesignSystem.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,24 +64,28 @@
 /* Begin PBXFileReference section */
 		00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeDetailView.swift; sourceTree = "<group>"; };
 		106BBE5DFC5261FD8C245A58 /* AdSegmentUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdSegmentUtilities.swift; sourceTree = "<group>"; };
+		17E98B5C5BE3F800EB22E0D2 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
 		19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AVPlayerPlaybackService.swift; sourceTree = "<group>"; };
 		1AECB16C71E750574788BF06 /* JSONEpisodeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONEpisodeStore.swift; sourceTree = "<group>"; };
 		243B67A8EA77921235E4B79E /* TextInputStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInputStyles.swift; sourceTree = "<group>"; };
-		AA11223344556677EEFF0011 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		3201575E7025181845F1191E /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
 		335738CB09DA0F1B0503E241 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		365AE63E73EF78328A69D7D0 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		3E47A9C0029E566640A85C16 /* RSSPodcastFeedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSSPodcastFeedService.swift; sourceTree = "<group>"; };
-		433DACA61DC0AED110B41C36 /* TurtlePod.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TurtlePod.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		433DACA61DC0AED110B41C36 /* TurtlePod.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TurtlePod.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		463BF31C5B05745B025A4230 /* LocalWhisperProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWhisperProvider.swift; sourceTree = "<group>"; };
 		4CEEC883919C8E70DF458ECE /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		4D44F750BB983A6A343A85B0 /* FileEpisodeDownloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileEpisodeDownloadService.swift; sourceTree = "<group>"; };
+		4FC4F2F803545C482B4D0EB2 /* EpisodeDescriptionCleaner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeDescriptionCleaner.swift; sourceTree = "<group>"; };
+		59AA65D47A27B492E08833D5 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		5F248DDDF93C9C3DB10B6C2B /* Protocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocols.swift; sourceTree = "<group>"; };
 		6D9FC4D3919BDCF1B4F563F8 /* TurtlePodApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtlePodApp.swift; sourceTree = "<group>"; };
 		A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
 		B04E7E5CE700AEA965E20A18 /* AudioChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChunker.swift; sourceTree = "<group>"; };
 		B2507707DC469B017EF69752 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysisPipeline.swift; sourceTree = "<group>"; };
-		BA8421AA73C3E3DFD1D7F414 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		BA8421AA73C3E3DFD1D7F414 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
+		BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationModelsAdClassifier.swift; sourceTree = "<group>"; };
 		BD6BC3766DB886AF7886B4C5 /* TurtlePodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtlePodModel.swift; sourceTree = "<group>"; };
 		CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainOpenAIKeyStore.swift; sourceTree = "<group>"; };
 		EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TurtlePodCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,6 +93,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		49F79D7BDAEDC7E190080561 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				55465DC71EC013FC1E9B84B4 /* WhisperKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6BB7948E7918E8B4A5F75AC3 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -98,7 +115,7 @@
 		28B2A08812B8C45C2152E869 /* TurtlePodApp */ = {
 			isa = PBXGroup;
 			children = (
-				AA11223344556677EEFF0011 /* DesignSystem.swift */,
+				59AA65D47A27B492E08833D5 /* DesignSystem.swift */,
 				3201575E7025181845F1191E /* DownloadsView.swift */,
 				00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */,
 				365AE63E73EF78328A69D7D0 /* LibraryView.swift */,
@@ -119,15 +136,19 @@
 				D7731D9FE748CBB97FD727BE /* Resources */,
 				106BBE5DFC5261FD8C245A58 /* AdSegmentUtilities.swift */,
 				B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */,
+				BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */,
 				B04E7E5CE700AEA965E20A18 /* AudioChunker.swift */,
 				19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */,
+				4FC4F2F803545C482B4D0EB2 /* EpisodeDescriptionCleaner.swift */,
 				4D44F750BB983A6A343A85B0 /* FileEpisodeDownloadService.swift */,
 				1AECB16C71E750574788BF06 /* JSONEpisodeStore.swift */,
 				CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */,
+				463BF31C5B05745B025A4230 /* LocalWhisperProvider.swift */,
 				F259627375C74EF13CA2E72F /* Models.swift */,
 				A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */,
 				5F248DDDF93C9C3DB10B6C2B /* Protocols.swift */,
 				3E47A9C0029E566640A85C16 /* RSSPodcastFeedService.swift */,
+				17E98B5C5BE3F800EB22E0D2 /* WhisperModelManager.swift */,
 			);
 			name = TurtlePodCore;
 			path = Sources/TurtlePodCore;
@@ -187,6 +208,7 @@
 			buildConfigurationList = 582E2AC5804732682861E297 /* Build configuration list for PBXNativeTarget "TurtlePodCore" */;
 			buildPhases = (
 				2D2C7694C32DCFB35E67B3DE /* Sources */,
+				49F79D7BDAEDC7E190080561 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -194,6 +216,7 @@
 			);
 			name = TurtlePodCore;
 			packageProductDependencies = (
+				88F6E5C09EAEA4DBFA1A6023 /* WhisperKit */,
 			);
 			productName = TurtlePodCore;
 			productReference = EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */;
@@ -209,7 +232,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					108ECE46B99BB2FA20AC5AEC = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					19B9CEF58C00B2D61B485D07 = {
@@ -226,6 +248,9 @@
 			);
 			mainGroup = 732DDD7ECDD7A7D1F6E8E919;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B8FC97D9552B335B9142E82A /* XCRemoteSwiftPackageReference "WhisperKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AD7D9131757A1615EE376B7F /* Products */;
 			projectDirPath = "";
@@ -245,14 +270,18 @@
 				5A10DA0B3F01AF59A4EEA445 /* AIAnalysisPipeline.swift in Sources */,
 				3FC4CADB464DCD7C209AB41A /* AVPlayerPlaybackService.swift in Sources */,
 				1B19564511D1D1B704520A84 /* AdSegmentUtilities.swift in Sources */,
+				2875B501C22F8661F9C2EA99 /* AppleFoundationModelsAdClassifier.swift in Sources */,
 				5AAC32D5F5953BDC3B9422AC /* AudioChunker.swift in Sources */,
+				1A755ECE57579CAB85C49646 /* EpisodeDescriptionCleaner.swift in Sources */,
 				E6BD706A514A30D9B306F189 /* FileEpisodeDownloadService.swift in Sources */,
 				F1B0780F1BF8B4D71002F5CD /* JSONEpisodeStore.swift in Sources */,
 				B46B42577BA7801FCD52E4D0 /* KeychainOpenAIKeyStore.swift in Sources */,
+				47907FAEA58E4FFA1A9C0D35 /* LocalWhisperProvider.swift in Sources */,
 				F7F040DA4A26640E56B4372D /* Models.swift in Sources */,
 				874830402D9C6F3815ABFD69 /* OpenAIProvider.swift in Sources */,
 				04B4EFD05211ADB0BEEFAAB2 /* Protocols.swift in Sources */,
 				15BAC0B05ABFAC50A66A081C /* RSSPodcastFeedService.swift in Sources */,
+				7D65901F1B7D2748402AB92D /* WhisperModelManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,13 +289,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FC2A7B0F7363F9FA23C3AF49 /* DesignSystem.swift in Sources */,
 				97E8D3242E87E3D13DCEDF92 /* DownloadsView.swift in Sources */,
 				F84F87682E9EECBAE987328C /* EpisodeDetailView.swift in Sources */,
 				15DF98260A9A4202C0CE36D3 /* LibraryView.swift in Sources */,
 				1AFB2BE1C7767C6C68D6D2A2 /* PlayerView.swift in Sources */,
 				F52254ACF26B7D56AB938367 /* RootView.swift in Sources */,
 				61C91ED9D4C855F782CD5EB3 /* SettingsView.swift in Sources */,
-				AA11223344556677AABBCCDD /* DesignSystem.swift in Sources */,
 				FF98570121D97433BA6A4076 /* TextInputStyles.swift in Sources */,
 				CF9C3F13C5DB28D4072C6676 /* TurtlePodApp.swift in Sources */,
 				349DA09A7FFC85E9EAE0A7C4 /* TurtlePodModel.swift in Sources */,
@@ -314,6 +343,7 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WS7DWR8G56;
 				INFOPLIST_FILE = "Generated/TurtlePod-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -332,6 +362,7 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WS7DWR8G56;
 				INFOPLIST_FILE = "Generated/TurtlePod-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -518,6 +549,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B8FC97D9552B335B9142E82A /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		88F6E5C09EAEA4DBFA1A6023 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B8FC97D9552B335B9142E82A /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1E037F63BD5B16EA1A8140C3 /* Project object */;
 }

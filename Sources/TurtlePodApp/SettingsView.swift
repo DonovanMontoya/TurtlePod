@@ -1,4 +1,5 @@
 import SwiftUI
+import TurtlePodCore
 
 struct SettingsView: View {
     @EnvironmentObject private var model: TurtlePodModel
@@ -23,22 +24,140 @@ struct SettingsView: View {
                                 .tint(theme.teal)
                         }
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("OpenAI API Key")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Ad detection model")
                                 .font(.caption)
                                 .foregroundStyle(theme.textTertiary)
-                            SecureField("sk-...", text: $model.apiKeyDraft)
-                                .secretEntryStyle()
-                                .font(.subheadline.monospaced())
-                                .foregroundStyle(theme.textPrimary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
+
+                            Picker("Ad detection model", selection: $model.settings.aiClassificationProvider) {
+                                ForEach(AIClassificationProviderKind.allCases, id: \.self) { provider in
+                                    Text(provider.displayName)
+                                        .tag(provider)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            if model.settings.aiClassificationProvider == .appleFoundationModels {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "cpu")
+                                        .font(.caption)
+                                        .foregroundStyle(theme.teal)
+                                        .frame(width: 16)
+                                    Text(model.appleFoundationModelsAvailabilityMessage)
+                                        .font(.caption)
+                                        .foregroundStyle(theme.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
                                 .background(theme.backgroundElevated)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .strokeBorder(theme.textTertiary.opacity(0.2), lineWidth: 0.5)
-                                )
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Transcription model")
+                                .font(.caption)
+                                .foregroundStyle(theme.textTertiary)
+
+                            Picker("Transcription model", selection: $model.settings.aiTranscriptionProvider) {
+                                ForEach(AITranscriptionProviderKind.allCases, id: \.self) { provider in
+                                    Text(provider.displayName)
+                                        .tag(provider)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            if model.settings.aiTranscriptionProvider == .localWhisper {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Whisper model size")
+                                        .font(.caption)
+                                        .foregroundStyle(theme.textTertiary)
+
+                                    Picker("Model size", selection: $model.settings.whisperModelSize) {
+                                        ForEach(WhisperModelSize.allCases, id: \.self) { size in
+                                            Text(size.displayName)
+                                                .tag(size)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
+
+                                    HStack(alignment: .center, spacing: 8) {
+                                        Image(systemName: model.selectedWhisperModelIsDownloaded ? "checkmark.circle.fill" : "arrow.down.circle")
+                                            .font(.caption)
+                                            .foregroundStyle(model.selectedWhisperModelIsDownloaded ? theme.teal : theme.amberMuted)
+                                            .frame(width: 16)
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(model.selectedWhisperModelIsDownloaded ? "Model downloaded" : "Downloads on first analysis")
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(theme.textPrimary)
+                                            Text("\(model.settings.whisperModelSize.storageDescription) • \(model.settings.whisperModelSize.speedDescription)")
+                                                .font(.caption)
+                                                .foregroundStyle(theme.textSecondary)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 8)
+                                    .background(theme.backgroundElevated)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Image(systemName: "cpu")
+                                            .font(.caption)
+                                            .foregroundStyle(theme.teal)
+                                            .frame(width: 16)
+                                        Text("Model downloads on first use. Larger models are more accurate but slower and use more memory.")
+                                            .font(.caption)
+                                            .foregroundStyle(theme.textSecondary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 8)
+                                    .background(theme.backgroundElevated)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                                .task(id: model.settings.whisperModelSize) {
+                                    await model.refreshSelectedWhisperModelStatus()
+                                }
+                            }
+                        }
+
+                        if model.needsOpenAIKey {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("OpenAI API Key")
+                                    .font(.caption)
+                                    .foregroundStyle(theme.textTertiary)
+                                SecureField("sk-...", text: $model.apiKeyDraft)
+                                    .secretEntryStyle()
+                                    .font(.subheadline.monospaced())
+                                    .foregroundStyle(theme.textPrimary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(theme.backgroundElevated)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .strokeBorder(theme.textTertiary.opacity(0.2), lineWidth: 0.5)
+                                    )
+                            }
+                        } else {
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "checkmark.shield")
+                                    .font(.caption)
+                                    .foregroundStyle(theme.teal)
+                                    .frame(width: 16)
+                                Text("Fully local — no API key required.")
+                                    .font(.caption)
+                                    .foregroundStyle(theme.textSecondary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(theme.backgroundElevated)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                     }
                     .turtleCard()
@@ -96,6 +215,52 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .turtleNavBarBackground(theme)
+    }
+}
+
+private extension AIClassificationProviderKind {
+    var displayName: String {
+        switch self {
+        case .openAI:
+            "OpenAI"
+        case .appleFoundationModels:
+            "Apple On-Device"
+        }
+    }
+}
+
+private extension AITranscriptionProviderKind {
+    var displayName: String {
+        switch self {
+        case .openAI:
+            "OpenAI"
+        case .localWhisper:
+            "Local Whisper"
+        }
+    }
+}
+
+private extension WhisperModelSize {
+    var storageDescription: String {
+        switch self {
+        case .tiny:
+            "~39 MB"
+        case .base:
+            "~142 MB"
+        case .small:
+            "~462 MB"
+        }
+    }
+
+    var speedDescription: String {
+        switch self {
+        case .tiny:
+            "Fastest"
+        case .base:
+            "Balanced speed"
+        case .small:
+            "Slower, more accurate"
+        }
     }
 }
 

@@ -1,11 +1,11 @@
 import Foundation
 
 public final class DefaultTranscriptService: TranscriptService {
-    private let provider: AIProvider
+    private let provider: TranscriptionProvider
     private let chunker: AudioChunker
     private let maxChunkDuration: TimeInterval
 
-    public init(provider: AIProvider, chunker: AudioChunker = AVAssetAudioChunker(), maxChunkDuration: TimeInterval = 600) {
+    public init(provider: TranscriptionProvider, chunker: AudioChunker = AVAssetAudioChunker(), maxChunkDuration: TimeInterval = 600) {
         self.provider = provider
         self.chunker = chunker
         self.maxChunkDuration = maxChunkDuration
@@ -45,15 +45,17 @@ public final class DefaultTranscriptService: TranscriptService {
 }
 
 public final class DefaultAdDetectionService: AdDetectionService {
-    private let provider: AIProvider
+    private let provider: AdClassificationProvider
+    private let apiKey: String
     private let gapTolerance: TimeInterval
 
-    public init(provider: AIProvider, gapTolerance: TimeInterval = 2) {
+    public init(provider: AdClassificationProvider, apiKey: String = "", gapTolerance: TimeInterval = 2) {
         self.provider = provider
+        self.apiKey = apiKey
         self.gapTolerance = gapTolerance
     }
 
-    public func detectAds(in transcript: [TranscriptChunk], apiKey: String) async throws -> [AdSegment] {
+    public func detectAds(in transcript: [TranscriptChunk]) async throws -> [AdSegment] {
         let rawSegments = try await provider.classify(transcript: transcript, apiKey: apiKey)
         return AdSegmentMerger.merge(rawSegments, gapTolerance: gapTolerance)
     }
@@ -62,18 +64,25 @@ public final class DefaultAdDetectionService: AdDetectionService {
 public actor EpisodeAnalysisPipeline {
     private let transcriptService: TranscriptService
     private let adDetectionService: AdDetectionService
-    private let apiKeyStore: APIKeyStore
+    private let transcriptionAPIKey: String
+    private let requiresTranscriptionAPIKey: Bool
     private let providerMetadata: AIProviderMetadata
+
+    public var metadata: AIProviderMetadata {
+        providerMetadata
+    }
 
     public init(
         transcriptService: TranscriptService,
         adDetectionService: AdDetectionService,
-        apiKeyStore: APIKeyStore,
+        transcriptionAPIKey: String,
+        requiresTranscriptionAPIKey: Bool = true,
         providerMetadata: AIProviderMetadata
     ) {
         self.transcriptService = transcriptService
         self.adDetectionService = adDetectionService
-        self.apiKeyStore = apiKeyStore
+        self.transcriptionAPIKey = transcriptionAPIKey
+        self.requiresTranscriptionAPIKey = requiresTranscriptionAPIKey
         self.providerMetadata = providerMetadata
     }
 
@@ -82,7 +91,7 @@ public actor EpisodeAnalysisPipeline {
         statusDidChange: (@MainActor @Sendable (AnalysisStatus) async -> Void)? = nil,
         transcriptionProgressDidChange: (@MainActor @Sendable (_ currentChunk: Int, _ totalChunks: Int) async -> Void)? = nil
     ) async throws -> EpisodeAnalysis {
-        guard let apiKey = try apiKeyStore.loadOpenAIKey(), !apiKey.isEmpty else {
+        guard !requiresTranscriptionAPIKey || !transcriptionAPIKey.isEmpty else {
             throw TurtlePodError.apiKeyMissing
         }
         guard episode.download?.state == .downloaded else {
@@ -92,11 +101,11 @@ public actor EpisodeAnalysisPipeline {
         await statusDidChange?(.transcribing)
         let transcript = try await transcriptService.transcribeDownloadedEpisode(
             episode,
-            apiKey: apiKey,
+            apiKey: transcriptionAPIKey,
             progressDidChange: transcriptionProgressDidChange
         )
         await statusDidChange?(.classifying)
-        let adSegments = try await adDetectionService.detectAds(in: transcript, apiKey: apiKey)
+        let adSegments = try await adDetectionService.detectAds(in: transcript)
         return EpisodeAnalysis(
             status: .complete,
             transcript: transcript,
