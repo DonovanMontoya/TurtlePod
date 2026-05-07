@@ -4,3 +4,6 @@ DerivedData/
 .DS_Store
 xcuserdata/
 *.xcuserdata/
+.claude/
+hatch-runs/
+TurtlePod.xcodeproj/project.xcworkspace/xcshareddata/
