@@ -28,6 +28,12 @@ public final class AVPlayerPlaybackService: PlaybackService, @unchecked Sendable
         player.replaceCurrentItem(with: AVPlayerItem(url: localFileURL))
     }
 
+    public func unload() {
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        loadedEpisode = nil
+    }
+
     public func play() async {
         player.play()
     }

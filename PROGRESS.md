@@ -1,6 +1,15 @@
 # TurtlePod Progress
 
-## Current State
+## September 2026 transcript update
+
+- Added RSS transcript discovery, direct URL retrieval, file import, offline reference storage, and episode-detail controls.
+- Added conservative text alignment and possible-insertion hints using downloaded-audio times. Classification checks every audio transcript cue and never treats missing reference text alone as an ad.
+- Added feed-state preservation, operation guards, interrupted-work recovery, current playback marker lookup, and temporary audio cleanup.
+- Pocket Casts generated VTT retrieval returned HTTP 403 in a live check. Publisher transcripts and imported exports are supported; no automatic Pocket Casts backend integration is claimed.
+- The full audio still needs transcription. See [implementation notes](docs/reference-transcripts.md).
+- Current verification: 33 portable Swift tests pass in Docker, plus two temporary live-data tests for MFM Minisode 504; app/core Swift syntax parsing passes. Full Apple SDK build and simulator testing remain unverified in this Linux workspace; macOS CI has been added.
+
+## Original MVP checkpoint
 
 TurtlePod has been bootstrapped as a Swift package plus a generated Xcode iOS project for an iOS 18+ podcast MVP. The repo now contains a testable core library, a SwiftUI app shell, local persistence, OpenAI integration plumbing, offline download support, playback abstractions, deterministic tests, and an iOS Simulator-buildable app target.
 
@@ -46,13 +55,13 @@ The app code supports this intended flow:
 
 ## Verification
 
-The local SwiftPM test suite passes:
+At the original macOS checkpoint, the local SwiftPM test suite passed:
 
 ```sh
 swift test
 ```
 
-The generated Xcode project builds for the available iPhone simulator:
+At that checkpoint, the generated Xcode project built for the available iPhone simulator:
 
 ```sh
 xcodegen generate
@@ -72,8 +81,8 @@ Current coverage includes:
 ## Known Gaps
 
 - In-app simulator smoke testing still needs to be completed for RSS entry, settings persistence, downloads, and playback.
-- Download progress is modeled, but the current implementation reports completion rather than streaming granular progress updates.
+- Download progress now streams during downloads; background downloads remain unsupported.
 - OpenAI network calls are implemented but not covered by live API tests.
 - Background audio, Now Playing metadata, and remote command center controls are not implemented.
 - Podcast search, subscriptions sync, accounts, recommendations, cross-device sync, and backend services are out of scope for this MVP.
-- Apple Foundation Models support is not implemented yet; the provider abstraction leaves room for it later.
+- Apple Foundation Models classification and local Whisper transcription are implemented; availability depends on the device and OS.

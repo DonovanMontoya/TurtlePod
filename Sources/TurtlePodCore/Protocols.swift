@@ -46,6 +46,13 @@ public extension TranscriptService {
 
 public protocol AdDetectionService: Sendable {
     func detectAds(in transcript: [TranscriptChunk]) async throws -> [AdSegment]
+    func detectAds(in transcript: [TranscriptChunk], comparison: ReferenceComparison?) async throws -> [AdSegment]
+}
+
+public extension AdDetectionService {
+    func detectAds(in transcript: [TranscriptChunk], comparison: ReferenceComparison?) async throws -> [AdSegment] {
+        try await detectAds(in: transcript)
+    }
 }
 
 public protocol TranscriptionProvider: Sendable {

@@ -12,6 +12,10 @@ final class TurtlePodModel: ObservableObject {
     @Published var selectedWhisperModelIsDownloaded = false
     @Published private var transcriptionProgressByEpisodeID: [UUID: Double] = [:]
 
+    @Published private(set) var busyEpisodeIDs: Set<UUID> = []
+    @Published private(set) var referenceMessages: [UUID: String] = [:]
+    private let referenceService: any ReferenceTranscriptService = HTTPReferenceTranscriptService()
+
     let playback: AVPlayerPlaybackService
     private let feedService: PodcastFeedService
     private let downloadService: EpisodeDownloadService
@@ -106,7 +110,8 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func addFeed(urlString: String) async {
-        guard let url = URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+        guard let url = URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines)),
+              TranscriptSource.isRemoteURL(url) else {
             statusMessage = "Enter a valid RSS URL."
             return
         }
@@ -114,8 +119,11 @@ final class TurtlePodModel: ObservableObject {
         do {
             statusMessage = "Fetching feed..."
             let feed = try await feedService.fetchFeed(from: url)
-            feeds.removeAll { $0.feedURL == feed.feedURL }
-            feeds.append(feed)
+            if let index = feeds.firstIndex(where: { $0.feedURL == feed.feedURL }) {
+                feeds[index] = PodcastFeedMerger.merge(feed, into: feeds[index])
+            } else {
+                feeds.append(feed)
+            }
             try await persistFeeds()
             statusMessage = "Added \(feed.title)."
         } catch {
@@ -124,7 +132,14 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func download(_ episode: PodcastEpisode) async {
+        guard !busyEpisodeIDs.contains(episode.id), let latest = self.episode(withID: episode.id) else { return }
+        let episode = latest
+        busyEpisodeIDs.insert(episode.id)
+        defer { busyEpisodeIDs.remove(episode.id) }
+        guard episode.download?.state != .downloaded else { return }
         await updateEpisode(episode.id) { episode in
+            // A fresh download may contain different ads and timing.
+            episode.analysis = EpisodeAnalysis()
             episode.download = EpisodeDownload(state: .downloading, progress: 0)
         }
 
@@ -150,7 +165,16 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func deleteDownload(_ episode: PodcastEpisode) async {
+        guard !busyEpisodeIDs.contains(episode.id), let latest = self.episode(withID: episode.id) else { return }
+        let episode = latest
+        busyEpisodeIDs.insert(episode.id)
+        defer { busyEpisodeIDs.remove(episode.id) }
         do {
+            if await playback.currentEpisode?.id == episode.id {
+                playback.unload()
+                activeSkipEvent = nil
+                await autoSkipController.resetForNewEpisode()
+            }
             try await downloadService.deleteDownload(for: episode)
             await updateEpisode(episode.id) { episode in
                 episode.download = nil
@@ -162,6 +186,10 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func analyze(_ episode: PodcastEpisode) async {
+        guard !busyEpisodeIDs.contains(episode.id), let latest = self.episode(withID: episode.id) else { return }
+        let episode = latest
+        busyEpisodeIDs.insert(episode.id)
+        defer { busyEpisodeIDs.remove(episode.id) }
         guard settings.aiAnalysisEnabled else {
             statusMessage = "Enable AI analysis in Settings first."
             return
@@ -169,6 +197,9 @@ final class TurtlePodModel: ObservableObject {
         guard await ensureDownloadFileExists(for: episode.id) else {
             return
         }
+
+        await fetchPublisherReferenceIfNeeded(episode)
+        guard let analysisEpisode = self.episode(withID: episode.id) else { return }
 
         await updateEpisode(episode.id) { episode in
             episode.analysis.status = .transcribing
@@ -189,7 +220,7 @@ final class TurtlePodModel: ObservableObject {
             )
             statusMessage = "Transcribing with \(transcriptionLabel)..."
             let analysis = try await analysisPipeline.analyze(
-                episode,
+                analysisEpisode,
                 statusDidChange: { status in
                     await self.updateEpisode(episode.id) { episode in
                         episode.analysis.status = status
@@ -226,6 +257,10 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func reanalyzeAds(_ episode: PodcastEpisode) async {
+        guard !busyEpisodeIDs.contains(episode.id), let latest = self.episode(withID: episode.id) else { return }
+        let episode = latest
+        busyEpisodeIDs.insert(episode.id)
+        defer { busyEpisodeIDs.remove(episode.id) }
         guard settings.aiAnalysisEnabled else {
             statusMessage = "Enable AI analysis in Settings first."
             return
@@ -247,10 +282,14 @@ final class TurtlePodModel: ObservableObject {
             }
             statusMessage = "Classifying ads with \(classificationLabel)..."
 
-            let adSegments = try await context.adDetectionService.detectAds(in: episode.analysis.transcript)
+            let comparison = episode.referenceTranscript.map {
+                ReferenceTranscriptAlignment.compare(episode.analysis.transcript, to: $0)
+            }
+            let adSegments = try await context.adDetectionService.detectAds(in: episode.analysis.transcript, comparison: comparison)
             await updateEpisode(episode.id) { episode in
                 episode.analysis.status = .complete
                 episode.analysis.adSegments = adSegments
+                episode.analysis.referenceComparison = comparison
                 episode.analysis.providerMetadata = context.providerMetadata
                 episode.analysis.errorMessage = nil
             }
@@ -303,7 +342,10 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func evaluateAutoSkip() async {
-        guard let episode = await playback.currentEpisode else { return }
+        guard let playing = await playback.currentEpisode,
+              let episode = self.episode(withID: playing.id),
+              episode.download?.state == .downloaded,
+              !busyEpisodeIDs.contains(episode.id) else { return }
         let time = await playback.currentTime
 
         do {
@@ -368,7 +410,7 @@ final class TurtlePodModel: ObservableObject {
             break
         }
         if persist {
-            try? await persistFeeds()
+            do { try await persistFeeds() } catch { statusMessage = error.localizedDescription }
         }
     }
 
@@ -519,6 +561,15 @@ final class TurtlePodModel: ObservableObject {
         for feedIndex in feeds.indices {
             for episodeIndex in feeds[feedIndex].episodes.indices {
                 let download = feeds[feedIndex].episodes[episodeIndex].download
+                if download?.state == .downloading {
+                    feeds[feedIndex].episodes[episodeIndex].download = EpisodeDownload(state: .failed, errorMessage: "Download interrupted. Try again.")
+                    changed = true
+                }
+                if [.queued, .transcribing, .classifying].contains(feeds[feedIndex].episodes[episodeIndex].analysis.status) {
+                    feeds[feedIndex].episodes[episodeIndex].analysis.status = .failed
+                    feeds[feedIndex].episodes[episodeIndex].analysis.errorMessage = "Analysis interrupted. Try again."
+                    changed = true
+                }
                 guard download?.state == .downloaded else {
                     continue
                 }
@@ -544,6 +595,88 @@ final class TurtlePodModel: ObservableObject {
             }
         }
         return changed
+    }
+
+    func fetchReference(_ episodeID: UUID, urlString: String? = nil) async {
+        guard !busyEpisodeIDs.contains(episodeID), let episode = episode(withID: episodeID) else { return }
+        busyEpisodeIDs.insert(episodeID)
+        defer { busyEpisodeIDs.remove(episodeID) }
+        if let urlString {
+            guard let url = URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  TranscriptSource.isRemoteURL(url) else {
+                referenceMessages[episodeID] = ReferenceTranscriptError.invalidURL.localizedDescription
+                return
+            }
+            let source = TranscriptSource(url: url, label: url.host == "shownotes.pocketcasts.com" ? "Pocket Casts" : "Imported URL")
+            do {
+                referenceMessages[episodeID] = "Fetching transcript…"
+                let reference = try await referenceService.fetch(source)
+                await saveReference(reference, episodeID: episodeID)
+            } catch { referenceMessages[episodeID] = error.localizedDescription }
+        } else {
+            await fetchPublisherReferenceIfNeeded(episode, force: true)
+        }
+    }
+
+    func importReference(_ data: Data, fileURL: URL, episodeID: UUID) async {
+        guard !busyEpisodeIDs.contains(episodeID) else { return }
+        busyEpisodeIDs.insert(episodeID)
+        defer { busyEpisodeIDs.remove(episodeID) }
+        do {
+            let source = TranscriptSource(url: fileURL, label: "Imported file")
+            let reference = try ReferenceTranscriptParser.parse(data, source: source)
+            await saveReference(reference, episodeID: episodeID)
+        } catch { referenceMessages[episodeID] = error.localizedDescription }
+    }
+
+    func removeReference(episodeID: UUID) async {
+        guard !busyEpisodeIDs.contains(episodeID) else { return }
+        await updateEpisode(episodeID) { episode in
+            episode.referenceTranscript = nil
+            episode.analysis.referenceComparison = nil
+        }
+        referenceMessages[episodeID] = nil
+    }
+
+    private func saveReference(_ reference: ReferenceTranscript, episodeID: UUID) async {
+        await updateEpisode(episodeID) { episode in
+            episode.referenceTranscript = reference
+            episode.analysis.referenceComparison = nil
+        }
+        referenceMessages[episodeID] = "Transcript saved. Analyze or re-analyze ads to compare it with this download."
+    }
+
+    private func fetchPublisherReferenceIfNeeded(_ episode: PodcastEpisode, force: Bool = false) async {
+        if !force, episode.referenceTranscript != nil { return }
+        if episode.transcriptSources == nil || force,
+           let savedFeed = feeds.first(where: { $0.id == episode.feedID }) {
+            do {
+                let fresh = try await feedService.fetchFeed(from: savedFeed.feedURL)
+                if let index = feeds.firstIndex(where: { $0.id == savedFeed.id }) {
+                    feeds[index] = PodcastFeedMerger.merge(fresh, into: feeds[index])
+                    try await persistFeeds()
+                }
+            } catch {
+                referenceMessages[episode.id] = "Could not refresh transcript links: \(error.localizedDescription)"
+            }
+        }
+        let sources = TranscriptSource.preferredSources(from: self.episode(withID: episode.id)?.transcriptSources ?? [])
+        guard !sources.isEmpty else {
+            if force { referenceMessages[episode.id] = "This feed has no transcript links. Import a transcript file or direct URL." }
+            return
+        }
+        referenceMessages[episode.id] = "Fetching publisher transcript…"
+        for source in sources.prefix(4) {
+            do {
+                let reference = try await referenceService.fetch(source)
+                await saveReference(reference, episodeID: episode.id)
+                return
+            } catch is CancellationError {
+                return
+            } catch {
+                referenceMessages[episode.id] = "Publisher transcript unavailable: \(error.localizedDescription) Audio analysis can still run."
+            }
+        }
     }
 
     private func persistFeeds() async throws {

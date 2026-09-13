@@ -28,6 +28,9 @@ public struct PodcastEpisode: Identifiable, Codable, Equatable, Sendable {
     public var download: EpisodeDownload?
     public var analysis: EpisodeAnalysis
     public var autoSkipEnabled: Bool
+    public var guid: String?
+    public var transcriptSources: [TranscriptSource]?
+    public var referenceTranscript: ReferenceTranscript?
 
     public init(
         id: UUID = UUID(),
@@ -40,7 +43,10 @@ public struct PodcastEpisode: Identifiable, Codable, Equatable, Sendable {
         description: String = "",
         download: EpisodeDownload? = nil,
         analysis: EpisodeAnalysis = EpisodeAnalysis(),
-        autoSkipEnabled: Bool = true
+        autoSkipEnabled: Bool = true,
+        guid: String? = nil,
+        transcriptSources: [TranscriptSource]? = nil,
+        referenceTranscript: ReferenceTranscript? = nil
     ) {
         self.id = id
         self.feedID = feedID
@@ -53,6 +59,9 @@ public struct PodcastEpisode: Identifiable, Codable, Equatable, Sendable {
         self.download = download
         self.analysis = analysis
         self.autoSkipEnabled = autoSkipEnabled
+        self.guid = guid
+        self.transcriptSources = transcriptSources
+        self.referenceTranscript = referenceTranscript
     }
 }
 
@@ -82,6 +91,7 @@ public struct EpisodeAnalysis: Codable, Equatable, Sendable {
     public var transcript: [TranscriptChunk]
     public var adSegments: [AdSegment]
     public var providerMetadata: AIProviderMetadata?
+    public var referenceComparison: ReferenceComparison?
     public var errorMessage: String?
 
     public init(
@@ -89,12 +99,14 @@ public struct EpisodeAnalysis: Codable, Equatable, Sendable {
         transcript: [TranscriptChunk] = [],
         adSegments: [AdSegment] = [],
         providerMetadata: AIProviderMetadata? = nil,
+        referenceComparison: ReferenceComparison? = nil,
         errorMessage: String? = nil
     ) {
         self.status = status
         self.transcript = transcript
         self.adSegments = adSegments
         self.providerMetadata = providerMetadata
+        self.referenceComparison = referenceComparison
         self.errorMessage = errorMessage
     }
 }

@@ -35,6 +35,10 @@
 		F84F87682E9EECBAE987328C /* EpisodeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */; };
 		FC2A7B0F7363F9FA23C3AF49 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59AA65D47A27B492E08833D5 /* DesignSystem.swift */; };
 		FF98570121D97433BA6A4076 /* TextInputStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243B67A8EA77921235E4B79E /* TextInputStyles.swift */; };
+		DC714C67E64FB56BC462116C /* ReferenceTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03A4B9F4941FC7F430D48F3 /* ReferenceTranscript.swift */; };
+		CDB357F7DBDB90097E3FA5EB /* ReferenceTranscriptAlignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7527F17D0AB0118316B8C903 /* ReferenceTranscriptAlignment.swift */; };
+		9672C011F41A49FCD1175D55 /* PodcastFeedMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8360B874F5F25EE7716A9D78 /* PodcastFeedMerger.swift */; };
+		863AEA401C961394F1BB56AD /* ReferenceTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80B18B9FA27233A91C550DE /* ReferenceTranscriptView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +94,10 @@
 		CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainOpenAIKeyStore.swift; sourceTree = "<group>"; };
 		EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TurtlePodCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F259627375C74EF13CA2E72F /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B03A4B9F4941FC7F430D48F3 /* ReferenceTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceTranscript.swift; sourceTree = "<group>"; };
+		7527F17D0AB0118316B8C903 /* ReferenceTranscriptAlignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceTranscriptAlignment.swift; sourceTree = "<group>"; };
+		8360B874F5F25EE7716A9D78 /* PodcastFeedMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastFeedMerger.swift; sourceTree = "<group>"; };
+		D80B18B9FA27233A91C550DE /* ReferenceTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceTranscriptView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +126,7 @@
 				59AA65D47A27B492E08833D5 /* DesignSystem.swift */,
 				3201575E7025181845F1191E /* DownloadsView.swift */,
 				00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */,
+				D80B18B9FA27233A91C550DE /* ReferenceTranscriptView.swift */,
 				365AE63E73EF78328A69D7D0 /* LibraryView.swift */,
 				4CEEC883919C8E70DF458ECE /* PlayerView.swift */,
 				B2507707DC469B017EF69752 /* RootView.swift */,
@@ -145,6 +154,9 @@
 				CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */,
 				463BF31C5B05745B025A4230 /* LocalWhisperProvider.swift */,
 				F259627375C74EF13CA2E72F /* Models.swift */,
+				8360B874F5F25EE7716A9D78 /* PodcastFeedMerger.swift */,
+				7527F17D0AB0118316B8C903 /* ReferenceTranscriptAlignment.swift */,
+				B03A4B9F4941FC7F430D48F3 /* ReferenceTranscript.swift */,
 				A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */,
 				5F248DDDF93C9C3DB10B6C2B /* Protocols.swift */,
 				3E47A9C0029E566640A85C16 /* RSSPodcastFeedService.swift */,
@@ -278,6 +290,9 @@
 				B46B42577BA7801FCD52E4D0 /* KeychainOpenAIKeyStore.swift in Sources */,
 				47907FAEA58E4FFA1A9C0D35 /* LocalWhisperProvider.swift in Sources */,
 				F7F040DA4A26640E56B4372D /* Models.swift in Sources */,
+				9672C011F41A49FCD1175D55 /* PodcastFeedMerger.swift in Sources */,
+				CDB357F7DBDB90097E3FA5EB /* ReferenceTranscriptAlignment.swift in Sources */,
+				DC714C67E64FB56BC462116C /* ReferenceTranscript.swift in Sources */,
 				874830402D9C6F3815ABFD69 /* OpenAIProvider.swift in Sources */,
 				04B4EFD05211ADB0BEEFAAB2 /* Protocols.swift in Sources */,
 				15BAC0B05ABFAC50A66A081C /* RSSPodcastFeedService.swift in Sources */,
@@ -292,6 +307,7 @@
 				FC2A7B0F7363F9FA23C3AF49 /* DesignSystem.swift in Sources */,
 				97E8D3242E87E3D13DCEDF92 /* DownloadsView.swift in Sources */,
 				F84F87682E9EECBAE987328C /* EpisodeDetailView.swift in Sources */,
+				863AEA401C961394F1BB56AD /* ReferenceTranscriptView.swift in Sources */,
 				15DF98260A9A4202C0CE36D3 /* LibraryView.swift in Sources */,
 				1AFB2BE1C7767C6C68D6D2A2 /* PlayerView.swift in Sources */,
 				F52254ACF26B7D56AB938367 /* RootView.swift in Sources */,

@@ -21,10 +21,15 @@ public final class DefaultTranscriptService: TranscriptService {
         }
 
         let chunks = try await chunker.chunks(for: localFileURL, maxDuration: maxChunkDuration)
+        defer {
+            for chunk in chunks where chunk.isTemporary {
+                try? FileManager.default.removeItem(at: chunk.fileURL)
+            }
+        }
         var transcript: [TranscriptChunk] = []
 
         for (index, chunk) in chunks.enumerated() {
-            await progressDidChange?(index + 1, chunks.count)
+            try Task.checkCancellation()
             let chunkTranscript = try await provider.transcribe(audioFile: chunk.fileURL, apiKey: apiKey)
                 .map { item in
                     TranscriptChunk(
@@ -35,9 +40,7 @@ public final class DefaultTranscriptService: TranscriptService {
                 }
             transcript.append(contentsOf: chunkTranscript)
 
-            if chunk.isTemporary {
-                try? FileManager.default.removeItem(at: chunk.fileURL)
-            }
+            await progressDidChange?(index + 1, chunks.count)
         }
 
         return transcript
@@ -56,8 +59,53 @@ public final class DefaultAdDetectionService: AdDetectionService {
     }
 
     public func detectAds(in transcript: [TranscriptChunk]) async throws -> [AdSegment] {
-        let rawSegments = try await provider.classify(transcript: transcript, apiKey: apiKey)
-        return AdSegmentMerger.merge(rawSegments, gapTolerance: gapTolerance)
+        try await detectAds(in: transcript, comparison: nil)
+    }
+
+    public func detectAds(in transcript: [TranscriptChunk], comparison: ReferenceComparison?) async throws -> [AdSegment] {
+        guard !transcript.isEmpty else { throw TurtlePodError.unsupportedResponse }
+        guard transcript.allSatisfy({ $0.start.isFinite && $0.end.isFinite && $0.start >= 0 && $0.end > $0.start }) else {
+            throw TurtlePodError.unsupportedResponse
+        }
+        let sorted = transcript.sorted { $0.start < $1.start }
+        // Bounded requests with one cue of overlap. Every cue is checked, even
+        // when it matches the reference (which may contain host-read sponsors).
+        var windows: [[TranscriptChunk]] = []
+        var current: [TranscriptChunk] = []
+        var characters = 0
+        for chunk in sorted {
+            if let first = current.first, current.count > 1,
+               chunk.end - first.start > 300 || characters + chunk.text.count > 12_000 {
+                windows.append(current)
+                current = Array(current.suffix(1))
+                characters = current.reduce(0) { $0 + $1.text.count }
+            }
+            current.append(chunk)
+            characters += chunk.text.count
+        }
+        if !current.isEmpty { windows.append(current) }
+        let candidates = comparison?.isReliable == true ? comparison?.candidates ?? [] : []
+        let ordered = windows.enumerated().sorted { lhs, rhs in
+            func containsCandidate(_ window: [TranscriptChunk]) -> Bool {
+                guard let start = window.first?.start, let end = window.last?.end else { return false }
+                return candidates.contains { $0.start < end && $0.end > start }
+            }
+            let left = containsCandidate(lhs.element)
+            let right = containsCandidate(rhs.element)
+            return left == right ? lhs.offset < rhs.offset : left
+        }
+        var segments: [AdSegment] = []
+        for (_, window) in ordered {
+            try Task.checkCancellation()
+            let detected = try await provider.classify(transcript: window, apiKey: apiKey)
+            let start = window.map(\.start).min() ?? 0
+            let end = window.map(\.end).max() ?? 0
+            segments += detected.filter {
+                $0.start.isFinite && $0.end.isFinite && $0.confidence.isFinite &&
+                $0.start >= start && $0.end <= end && $0.end > $0.start && (0...1).contains($0.confidence)
+            }
+        }
+        return AdSegmentMerger.merge(segments, gapTolerance: gapTolerance)
     }
 }
 
@@ -105,12 +153,14 @@ public actor EpisodeAnalysisPipeline {
             progressDidChange: transcriptionProgressDidChange
         )
         await statusDidChange?(.classifying)
-        let adSegments = try await adDetectionService.detectAds(in: transcript)
+        let comparison = episode.referenceTranscript.map { ReferenceTranscriptAlignment.compare(transcript, to: $0) }
+        let adSegments = try await adDetectionService.detectAds(in: transcript, comparison: comparison)
         return EpisodeAnalysis(
             status: .complete,
             transcript: transcript,
             adSegments: adSegments,
-            providerMetadata: providerMetadata
+            providerMetadata: providerMetadata,
+            referenceComparison: comparison
         )
     }
 }

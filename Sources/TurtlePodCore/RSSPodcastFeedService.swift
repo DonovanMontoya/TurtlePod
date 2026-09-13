@@ -21,6 +21,8 @@ public enum RSSFeedParser {
         let delegate = ParserDelegate(feedURL: feedURL)
         let parser = XMLParser(data: data)
         parser.delegate = delegate
+        parser.shouldResolveExternalEntities = false
+        parser.shouldProcessNamespaces = true
 
         guard parser.parse(), let feed = delegate.feed else {
             throw parser.parserError ?? TurtlePodError.invalidFeed
@@ -32,6 +34,8 @@ public enum RSSFeedParser {
 
 private final class ParserDelegate: NSObject, XMLParserDelegate {
     private struct Item {
+        var guid: String?
+        var transcriptSources: [TranscriptSource] = []
         var title = ""
         var audioURL: URL?
         var artworkURL: URL?
@@ -77,7 +81,8 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
         qualifiedName qName: String?,
         attributes attributeDict: [String: String] = [:]
     ) {
-        let element = normalized(elementName)
+        let element = namespaceURI == "https://podcastindex.org/namespace/1.0" && elementName == "transcript"
+            ? "podcast:transcript" : normalized(qName ?? elementName)
         elementStack.append(element)
         textBuffer = ""
 
@@ -87,6 +92,14 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             if let urlString = attributeDict["url"], let url = URL(string: urlString) {
                 currentItem?.audioURL = url
             }
+        } else if element == "podcast:transcript", currentItem != nil,
+                  let rawURL = attributeDict["url"],
+                  let url = URL(string: rawURL, relativeTo: feedURL)?.absoluteURL,
+                  TranscriptSource.isRemoteURL(url) {
+            currentItem?.transcriptSources.append(TranscriptSource(
+                url: url, type: attributeDict["type"] ?? "",
+                language: attributeDict["language"], label: "Publisher"
+            ))
         } else if element == "image" || element == "itunes:image" {
             if let urlString = attributeDict["href"] ?? attributeDict["url"], let url = URL(string: urlString) {
                 if currentItem != nil {
@@ -108,7 +121,8 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        let element = normalized(elementName)
+        let element = namespaceURI == "https://podcastindex.org/namespace/1.0" && elementName == "transcript"
+            ? "podcast:transcript" : normalized(qName ?? elementName)
         let text = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
         defer {
             _ = elementStack.popLast()
@@ -142,6 +156,8 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
         guard !text.isEmpty else { return }
 
         switch element {
+        case "guid":
+            currentItem?.guid = text
         case "title":
             currentItem?.title = text
         case "description", "content:encoded":
@@ -167,7 +183,9 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             artworkURL: item.artworkURL ?? channelArtworkURL,
             duration: item.duration,
             publishedAt: item.publishedAt,
-            description: item.description
+            description: item.description,
+            guid: item.guid,
+            transcriptSources: item.transcriptSources
         )
     }
 

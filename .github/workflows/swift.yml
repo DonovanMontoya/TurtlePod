@@ -1,0 +1,17 @@
+name: Swift
+on:
+  push:
+  pull_request:
+jobs:
+  apple-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test core
+        run: swift test
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate iOS project
+        run: xcodegen generate
+      - name: Build iOS app
+        run: xcodebuild -project TurtlePod.xcodeproj -scheme TurtlePod -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build

@@ -110,6 +110,7 @@ struct EpisodeDetailView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                     .buttonStyle(.plain)
+                                    .disabled(model.busyEpisodeIDs.contains(episode.id))
                                 } else {
                                     Button {
                                         Task { await model.download(episode) }
@@ -126,10 +127,12 @@ struct EpisodeDetailView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                     .buttonStyle(.plain)
-                                    .disabled(episode.download?.state == .downloading)
+                                    .disabled(model.busyEpisodeIDs.contains(episode.id))
                                 }
                             }
                             .turtleCard()
+
+                            ReferenceTranscriptView(episode: episode)
 
                             // AI Analysis
                             VStack(alignment: .leading, spacing: 12) {
@@ -160,7 +163,7 @@ struct EpisodeDetailView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(episode.download?.state != .downloaded || episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
+                                .disabled(episode.download?.state != .downloaded || model.busyEpisodeIDs.contains(episode.id))
 
                                 if !episode.analysis.transcript.isEmpty {
                                     Button {
@@ -181,7 +184,7 @@ struct EpisodeDetailView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                     .buttonStyle(.plain)
-                                    .disabled(episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
+                                    .disabled(model.busyEpisodeIDs.contains(episode.id))
                                 }
 
                                 if !episode.analysis.adSegments.isEmpty {

@@ -28,6 +28,7 @@ public struct AVAssetAudioChunker: AudioChunker {
     }
 
     public func chunks(for audioFile: URL, maxDuration: TimeInterval = 600) async throws -> [AudioChunk] {
+        guard maxDuration.isFinite, maxDuration > 0 else { throw TurtlePodError.unsupportedResponse }
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
         let asset = AVURLAsset(url: audioFile)
@@ -47,20 +48,26 @@ public struct AVAssetAudioChunker: AudioChunker {
         }
 
         var chunks: [AudioChunk] = []
+        var outputs: [URL] = []
+        var completed = false
+        defer {
+            if !completed {
+                for url in outputs { try? FileManager.default.removeItem(at: url) }
+            }
+        }
         var offset: TimeInterval = 0
         while offset < duration {
+            try Task.checkCancellation()
             let chunkDuration = min(maxDuration, duration - offset)
-            let outputURL = outputDirectory
-                .appending(path: "\(audioFile.deletingPathExtension().lastPathComponent)-\(Int(offset)).m4a")
-            if FileManager.default.fileExists(atPath: outputURL.path(percentEncoded: false)) {
-                try FileManager.default.removeItem(at: outputURL)
-            }
+            let outputURL = outputDirectory.appending(path: "\(UUID().uuidString).m4a")
+            outputs.append(outputURL)
 
             try await export(asset: asset, start: offset, duration: chunkDuration, outputURL: outputURL)
             chunks.append(AudioChunk(fileURL: outputURL, startOffset: offset, duration: chunkDuration, isTemporary: true))
             offset += chunkDuration
         }
 
+        completed = true
         return chunks
     }
 
