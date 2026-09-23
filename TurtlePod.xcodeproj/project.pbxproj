@@ -25,6 +25,7 @@
 		61C91ED9D4C855F782CD5EB3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335738CB09DA0F1B0503E241 /* SettingsView.swift */; };
 		7D65901F1B7D2748402AB92D /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E98B5C5BE3F800EB22E0D2 /* WhisperModelManager.swift */; };
 		874830402D9C6F3815ABFD69 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */; };
+		9A9C0327870B4C21A94DA002 /* JevAdClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9C0327870B4C21A94DA001 /* JevAdClassifier.swift */; };
 		97E8D3242E87E3D13DCEDF92 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3201575E7025181845F1191E /* DownloadsView.swift */; };
 		B46B42577BA7801FCD52E4D0 /* KeychainOpenAIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */; };
 		CF9C3F13C5DB28D4072C6676 /* TurtlePodApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9FC4D3919BDCF1B4F563F8 /* TurtlePodApp.swift */; };
@@ -85,6 +86,7 @@
 		5F248DDDF93C9C3DB10B6C2B /* Protocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocols.swift; sourceTree = "<group>"; };
 		6D9FC4D3919BDCF1B4F563F8 /* TurtlePodApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtlePodApp.swift; sourceTree = "<group>"; };
 		A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
+		9A9C0327870B4C21A94DA001 /* JevAdClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JevAdClassifier.swift; sourceTree = "<group>"; };
 		B04E7E5CE700AEA965E20A18 /* AudioChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChunker.swift; sourceTree = "<group>"; };
 		B2507707DC469B017EF69752 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysisPipeline.swift; sourceTree = "<group>"; };
@@ -152,6 +154,7 @@
 				4D44F750BB983A6A343A85B0 /* FileEpisodeDownloadService.swift */,
 				1AECB16C71E750574788BF06 /* JSONEpisodeStore.swift */,
 				CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */,
+				9A9C0327870B4C21A94DA001 /* JevAdClassifier.swift */,
 				463BF31C5B05745B025A4230 /* LocalWhisperProvider.swift */,
 				F259627375C74EF13CA2E72F /* Models.swift */,
 				8360B874F5F25EE7716A9D78 /* PodcastFeedMerger.swift */,
@@ -288,6 +291,7 @@
 				E6BD706A514A30D9B306F189 /* FileEpisodeDownloadService.swift in Sources */,
 				F1B0780F1BF8B4D71002F5CD /* JSONEpisodeStore.swift in Sources */,
 				B46B42577BA7801FCD52E4D0 /* KeychainOpenAIKeyStore.swift in Sources */,
+				9A9C0327870B4C21A94DA002 /* JevAdClassifier.swift in Sources */,
 				47907FAEA58E4FFA1A9C0D35 /* LocalWhisperProvider.swift in Sources */,
 				F7F040DA4A26640E56B4372D /* Models.swift in Sources */,
 				9672C011F41A49FCD1175D55 /* PodcastFeedMerger.swift in Sources */,

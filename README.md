@@ -6,7 +6,7 @@ The current implementation is a Swift package with:
 
 - SwiftUI app shell for library, episode detail, downloads, player, and settings.
 - Protocol-driven core services for feeds, downloads, playback, transcript generation, ad detection, and AI providers.
-- Keychain-backed OpenAI API key storage.
+- Separate Keychain-backed API keys for OpenAI, TypeSafe, and OpenRouter.
 - Fixture-backed unit tests for RSS parsing, ad range merging, AI response parsing, and playback auto-skip behavior.
 
 Project docs:
@@ -38,6 +38,8 @@ Reference transcripts:
 - Possible inserted sections are shown separately from confirmed ads. Classification checks all content, including host-read sponsors present in the reference. Skip times always come from the downloaded audio.
 
 This implementation still transcribes the full download. It uses text alignment, not Pocket Casts' audio fingerprint service. Pocket Casts generated-transcript access returned HTTP 403 in a live check; automatic access to that service is not implemented. Exported transcripts and accessible publisher URLs work independently. See [transcript implementation notes](docs/reference-transcripts.md). My Favorite Murder works through public publisher transcripts; [MFM Minisode 504 was tested against a full audio download](docs/mfm-transcript-test.md).
+
+Ad detection can use OpenAI, Apple On-Device, or Jev 1.13 through TypeSafe or OpenRouter. Set **Local Whisper** for transcription and a **Jev** route for classification to keep hosted model costs to Jev only. Each Jev route requires its own API key in Settings. Jev sees transcript text; the app computes skip times from audio transcription cues and refines candidate passages cue by cue. The MFM Minisode 504 audio transcript exercises both routing and timestamp handling with a mocked Jev response in the portable tests. Live Jev accuracy and end-to-end cost still need a service key and a labeled evaluation set.
 
 On Linux, run the portable core checks with Docker:
 

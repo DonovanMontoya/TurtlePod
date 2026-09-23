@@ -227,6 +227,8 @@ public struct SkipEvent: Identifiable, Codable, Equatable, Sendable {
 public enum AIClassificationProviderKind: String, Codable, CaseIterable, Equatable, Sendable {
     case openAI
     case appleFoundationModels
+    case jevTypeSafe
+    case jevOpenRouter
 }
 
 public enum AITranscriptionProviderKind: String, Codable, CaseIterable, Equatable, Sendable {

@@ -261,6 +261,10 @@ struct EpisodeDetailView: View {
             return analysisStatusLabel(provider: "openai", model: "gpt-4o-mini")
         case .appleFoundationModels:
             return analysisStatusLabel(provider: "apple-foundation-models", model: "system-language-model")
+        case .jevTypeSafe:
+            return analysisStatusLabel(provider: "jev-typesafe", model: "jev-1.13.0")
+        case .jevOpenRouter:
+            return analysisStatusLabel(provider: "jev-openrouter", model: "typesafe/jev-1.13")
         }
     }
 
@@ -276,6 +280,10 @@ struct EpisodeDetailView: View {
             "Local Whisper"
         case "apple-foundation-models":
             "Apple On-Device"
+        case "jev-typesafe":
+            "Jev via TypeSafe"
+        case "jev-openrouter":
+            "Jev via OpenRouter"
         default:
             provider
         }

@@ -7,6 +7,8 @@ final class TurtlePodModel: ObservableObject {
     @Published var feeds: [PodcastFeed] = []
     @Published var settings = AppSettings()
     @Published var apiKeyDraft = ""
+    @Published var typeSafeKeyDraft = ""
+    @Published var openRouterKeyDraft = ""
     @Published var statusMessage: String?
     @Published var activeSkipEvent: SkipEvent?
     @Published var selectedWhisperModelIsDownloaded = false
@@ -21,6 +23,7 @@ final class TurtlePodModel: ObservableObject {
     private let downloadService: EpisodeDownloadService
     private let store: EpisodeStore
     private let keyStore: APIKeyStore
+    private let jevKeyStore = KeychainJevKeyStore()
     private let openAIProvider: OpenAIProvider
     private let autoSkipController: AutoSkipController
 
@@ -82,6 +85,8 @@ final class TurtlePodModel: ObservableObject {
             }
             settings = try await store.loadSettings()
             apiKeyDraft = (try keyStore.loadOpenAIKey()) ?? ""
+            typeSafeKeyDraft = (try jevKeyStore.loadKey(for: .typeSafe)) ?? ""
+            openRouterKeyDraft = (try jevKeyStore.loadKey(for: .openRouter)) ?? ""
             await refreshSelectedWhisperModelStatus()
         } catch {
             statusMessage = error.localizedDescription
@@ -308,6 +313,9 @@ final class TurtlePodModel: ObservableObject {
             || settings.aiClassificationProvider == .openAI
     }
 
+    var needsTypeSafeKey: Bool { settings.aiClassificationProvider == .jevTypeSafe }
+    var needsOpenRouterKey: Bool { settings.aiClassificationProvider == .jevOpenRouter }
+
     var appleFoundationModelsAvailabilityMessage: String {
         AppleFoundationModelsAdClassifier.availabilityStatusMessage
     }
@@ -387,6 +395,16 @@ final class TurtlePodModel: ObservableObject {
             } else {
                 try keyStore.saveOpenAIKey(apiKeyDraft)
             }
+            if typeSafeKeyDraft.isEmpty {
+                try jevKeyStore.deleteKey(for: .typeSafe)
+            } else {
+                try jevKeyStore.saveKey(typeSafeKeyDraft, for: .typeSafe)
+            }
+            if openRouterKeyDraft.isEmpty {
+                try jevKeyStore.deleteKey(for: .openRouter)
+            } else {
+                try jevKeyStore.saveKey(openRouterKeyDraft, for: .openRouter)
+            }
             statusMessage = "Settings saved."
         } catch {
             statusMessage = error.localizedDescription
@@ -436,6 +454,10 @@ final class TurtlePodModel: ObservableObject {
             "Local Whisper"
         case "apple-foundation-models":
             "Apple On-Device"
+        case "jev-typesafe":
+            "Jev via TypeSafe"
+        case "jev-openrouter":
+            "Jev via OpenRouter"
         default:
             provider
         }
@@ -503,6 +525,18 @@ final class TurtlePodModel: ObservableObject {
             try AppleFoundationModelsAdClassifier.validateAvailability()
             classificationProvider = AppleFoundationModelsAdClassifier()
             classificationAPIKey = ""
+        case .jevTypeSafe:
+            guard let key = try jevKeyStore.loadKey(for: .typeSafe), !key.isEmpty else {
+                throw JevClassifierError.missingKey("TypeSafe")
+            }
+            classificationProvider = JevAdClassifier(route: .typeSafe)
+            classificationAPIKey = key
+        case .jevOpenRouter:
+            guard let key = try jevKeyStore.loadKey(for: .openRouter), !key.isEmpty else {
+                throw JevClassifierError.missingKey("OpenRouter")
+            }
+            classificationProvider = JevAdClassifier(route: .openRouter)
+            classificationAPIKey = key
         }
 
         return AdDetectionContext(

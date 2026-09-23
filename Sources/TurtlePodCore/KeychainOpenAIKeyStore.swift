@@ -67,3 +67,29 @@ public final class KeychainOpenAIKeyStore: APIKeyStore {
         ]
     }
 }
+
+public final class KeychainJevKeyStore {
+    private let typeSafe = KeychainOpenAIKeyStore(service: "com.turtlepod.typesafe")
+    private let openRouter = KeychainOpenAIKeyStore(service: "com.turtlepod.openrouter")
+
+    public init() {}
+
+    public func loadKey(for route: JevRoute) throws -> String? {
+        try store(for: route).loadOpenAIKey()
+    }
+
+    public func saveKey(_ key: String, for route: JevRoute) throws {
+        try store(for: route).saveOpenAIKey(key)
+    }
+
+    public func deleteKey(for route: JevRoute) throws {
+        try store(for: route).deleteOpenAIKey()
+    }
+
+    private func store(for route: JevRoute) -> KeychainOpenAIKeyStore {
+        switch route {
+        case .typeSafe: typeSafe
+        case .openRouter: openRouter
+        }
+    }
+}

@@ -11,10 +11,10 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 sources = ["Models", "Protocols", "EpisodeDescriptionCleaner", "RSSPodcastFeedService",
            "ReferenceTranscript", "ReferenceTranscriptAlignment", "PodcastFeedMerger",
-           "AIAnalysisPipeline", "AdSegmentUtilities", "JSONEpisodeStore"]
+           "AIAnalysisPipeline", "AdSegmentUtilities", "JSONEpisodeStore", "JevAdClassifier"]
 tests = ["ReferenceTranscriptTests", "ReferenceAlignmentTests", "ReferenceHTTPTests",
          "RSSFeedParserTests", "EpisodeDescriptionCleanerTests", "AppSettingsMigrationTests",
-         "AdSegmentMergerTests", "AutoSkipControllerTests"]
+         "AdSegmentMergerTests", "AutoSkipControllerTests", "JevAdClassifierTests"]
 with tempfile.TemporaryDirectory(prefix="turtlepod-swift-tests-") as directory:
     stage = Path(directory)
     code = stage / "Sources/TurtlePodCore"
@@ -49,5 +49,10 @@ public struct AVAssetAudioChunker: AudioChunker {
         (suite / f"{name}.swift").write_text((root / f"Tests/TurtlePodCoreTests/{name}.swift").read_text())
     import shutil
     shutil.copytree(root / "Tests/TurtlePodCoreTests/Fixtures", suite / "Fixtures")
-    subprocess.run(["docker", "run", "--rm", "--network=none", "--user", f"{os.getuid()}:{os.getgid()}",
+    mfm_fixture = Path("/tmp/turtlepod-mfm/asr.json")
+    mfm_environment = []
+    if mfm_fixture.exists():
+        shutil.copyfile(mfm_fixture, stage / "mfm-asr.json")
+        mfm_environment = ["-e", "TURTLEPOD_MFM_ASR=/package/mfm-asr.json"]
+    subprocess.run(["docker", "run", "--rm", "--network=none", *mfm_environment, "--user", f"{os.getuid()}:{os.getgid()}",
                     "-v", f"{stage}:/package", "-w", "/package", "swift:6.0", "swift", "test", "-j", "4"], check=True)
