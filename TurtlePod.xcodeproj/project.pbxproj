@@ -15,6 +15,7 @@
 		1AFB2BE1C7767C6C68D6D2A2 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CEEC883919C8E70DF458ECE /* PlayerView.swift */; };
 		1B19564511D1D1B704520A84 /* AdSegmentUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106BBE5DFC5261FD8C245A58 /* AdSegmentUtilities.swift */; };
 		2875B501C22F8661F9C2EA99 /* AppleFoundationModelsAdClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */; };
+		A9BD88EEA3044BDE82450002 /* AppleSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BD88EEA3044BDE82450001 /* AppleSpeechProvider.swift */; };
 		349DA09A7FFC85E9EAE0A7C4 /* TurtlePodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD6BC3766DB886AF7886B4C5 /* TurtlePodModel.swift */; };
 		37702E5C629DA4B8242E3EF3 /* TurtlePodCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */; };
 		3FC4CADB464DCD7C209AB41A /* AVPlayerPlaybackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */; };
@@ -92,6 +93,7 @@
 		B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysisPipeline.swift; sourceTree = "<group>"; };
 		BA8421AA73C3E3DFD1D7F414 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationModelsAdClassifier.swift; sourceTree = "<group>"; };
+		A9BD88EEA3044BDE82450001 /* AppleSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechProvider.swift; sourceTree = "<group>"; };
 		BD6BC3766DB886AF7886B4C5 /* TurtlePodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtlePodModel.swift; sourceTree = "<group>"; };
 		CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainOpenAIKeyStore.swift; sourceTree = "<group>"; };
 		EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TurtlePodCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -148,6 +150,7 @@
 				106BBE5DFC5261FD8C245A58 /* AdSegmentUtilities.swift */,
 				B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */,
 				BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */,
+				A9BD88EEA3044BDE82450001 /* AppleSpeechProvider.swift */,
 				B04E7E5CE700AEA965E20A18 /* AudioChunker.swift */,
 				19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */,
 				4FC4F2F803545C482B4D0EB2 /* EpisodeDescriptionCleaner.swift */,
@@ -286,6 +289,7 @@
 				3FC4CADB464DCD7C209AB41A /* AVPlayerPlaybackService.swift in Sources */,
 				1B19564511D1D1B704520A84 /* AdSegmentUtilities.swift in Sources */,
 				2875B501C22F8661F9C2EA99 /* AppleFoundationModelsAdClassifier.swift in Sources */,
+				A9BD88EEA3044BDE82450002 /* AppleSpeechProvider.swift in Sources */,
 				5AAC32D5F5953BDC3B9422AC /* AudioChunker.swift in Sources */,
 				1A755ECE57579CAB85C49646 /* EpisodeDescriptionCleaner.swift in Sources */,
 				E6BD706A514A30D9B306F189 /* FileEpisodeDownloadService.swift in Sources */,

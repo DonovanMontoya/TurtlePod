@@ -234,6 +234,7 @@ public enum AIClassificationProviderKind: String, Codable, CaseIterable, Equatab
 public enum AITranscriptionProviderKind: String, Codable, CaseIterable, Equatable, Sendable {
     case openAI
     case localWhisper
+    case appleSpeech
 }
 
 public enum WhisperModelSize: String, Codable, CaseIterable, Equatable, Sendable {

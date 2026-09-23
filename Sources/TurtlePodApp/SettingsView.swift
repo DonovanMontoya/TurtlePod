@@ -72,7 +72,24 @@ struct SettingsView: View {
                                         .tag(provider)
                                 }
                             }
-                            .pickerStyle(.segmented)
+                            .pickerStyle(.menu)
+
+                            if model.settings.aiTranscriptionProvider == .appleSpeech {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "waveform")
+                                        .font(.caption)
+                                        .foregroundStyle(theme.teal)
+                                        .frame(width: 16)
+                                    Text(model.appleSpeechAvailabilityMessage)
+                                        .font(.caption)
+                                        .foregroundStyle(theme.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(theme.backgroundElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
 
                             if model.settings.aiTranscriptionProvider == .localWhisper {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -269,6 +286,8 @@ private extension AITranscriptionProviderKind {
             "OpenAI"
         case .localWhisper:
             "Local Whisper"
+        case .appleSpeech:
+            "Apple Speech"
         }
     }
 }

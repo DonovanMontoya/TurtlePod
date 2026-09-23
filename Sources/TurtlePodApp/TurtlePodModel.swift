@@ -320,6 +320,14 @@ final class TurtlePodModel: ObservableObject {
         AppleFoundationModelsAdClassifier.availabilityStatusMessage
     }
 
+    var appleSpeechAvailabilityMessage: String {
+        if #available(iOS 26.0, *) {
+            AppleSpeechProvider.availabilityStatusMessage
+        } else {
+            "Requires iOS 26 or later."
+        }
+    }
+
     func play(_ episode: PodcastEpisode) async {
         guard await ensureDownloadFileExists(for: episode.id) else {
             return
@@ -452,6 +460,8 @@ final class TurtlePodModel: ObservableObject {
             "OpenAI"
         case "local-whisper":
             "Local Whisper"
+        case "apple-speech":
+            "Apple Speech"
         case "apple-foundation-models":
             "Apple On-Device"
         case "jev-typesafe":
@@ -484,6 +494,12 @@ final class TurtlePodModel: ObservableObject {
             transcriptionProvider = openAIProvider
         case .localWhisper:
             transcriptionProvider = LocalWhisperProvider(modelSize: settings.whisperModelSize)
+        case .appleSpeech:
+            if #available(iOS 26.0, *) {
+                transcriptionProvider = AppleSpeechProvider()
+            } else {
+                throw TurtlePodError.localModelUnavailable("Apple Speech transcription requires iOS 26 or later.")
+            }
         }
 
         let context = try makeAdDetectionContext(

@@ -248,6 +248,8 @@ struct EpisodeDetailView: View {
             return analysisStatusLabel(provider: "openai", model: "whisper-1")
         case .localWhisper:
             return analysisStatusLabel(provider: "local-whisper", model: "whisper-\(model.settings.whisperModelSize.rawValue)")
+        case .appleSpeech:
+            return analysisStatusLabel(provider: "apple-speech", model: "speech-transcriber")
         }
     }
 
@@ -278,6 +280,8 @@ struct EpisodeDetailView: View {
             "OpenAI"
         case "local-whisper":
             "Local Whisper"
+        case "apple-speech":
+            "Apple Speech"
         case "apple-foundation-models":
             "Apple On-Device"
         case "jev-typesafe":
