@@ -89,6 +89,9 @@ struct SettingsView: View {
                                 .padding(.vertical, 8)
                                 .background(theme.backgroundElevated)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .task {
+                                    await model.refreshAppleSpeechModelStatus()
+                                }
                             }
 
                             if model.settings.aiTranscriptionProvider == .localWhisper {

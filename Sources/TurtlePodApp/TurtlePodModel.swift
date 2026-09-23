@@ -12,6 +12,7 @@ final class TurtlePodModel: ObservableObject {
     @Published var statusMessage: String?
     @Published var activeSkipEvent: SkipEvent?
     @Published var selectedWhisperModelIsDownloaded = false
+    @Published var appleSpeechAvailabilityMessage = "Checking Apple Speech model..."
     @Published private var transcriptionProgressByEpisodeID: [UUID: Double] = [:]
 
     @Published private(set) var busyEpisodeIDs: Set<UUID> = []
@@ -245,12 +246,16 @@ final class TurtlePodModel: ObservableObject {
             }
             if settings.aiTranscriptionProvider == .localWhisper {
                 await refreshSelectedWhisperModelStatus()
+            } else if settings.aiTranscriptionProvider == .appleSpeech {
+                await refreshAppleSpeechModelStatus()
             }
             setTranscriptionProgress(nil, for: episode.id)
             statusMessage = "Analysis complete."
         } catch {
             if settings.aiTranscriptionProvider == .localWhisper {
                 await refreshSelectedWhisperModelStatus()
+            } else if settings.aiTranscriptionProvider == .appleSpeech {
+                await refreshAppleSpeechModelStatus()
             }
             await updateEpisode(episode.id) { episode in
                 episode.analysis.status = .failed
@@ -320,11 +325,11 @@ final class TurtlePodModel: ObservableObject {
         AppleFoundationModelsAdClassifier.availabilityStatusMessage
     }
 
-    var appleSpeechAvailabilityMessage: String {
+    func refreshAppleSpeechModelStatus() async {
         if #available(iOS 26.0, *) {
-            AppleSpeechProvider.availabilityStatusMessage
+            appleSpeechAvailabilityMessage = await AppleSpeechProvider.modelStatusMessage()
         } else {
-            "Requires iOS 26 or later."
+            appleSpeechAvailabilityMessage = "Requires iOS 26 or later."
         }
     }
 

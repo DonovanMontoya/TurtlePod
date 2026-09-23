@@ -10,10 +10,26 @@ public struct AppleSpeechProvider: TranscriptionProvider, Sendable {
 
     public init() {}
 
-    public static var availabilityStatusMessage: String {
-        SpeechTranscriber.isAvailable
-            ? "On-device transcription in English. Apple's language model downloads on first use."
-            : "Apple Speech transcription is not available on this device."
+    public static func modelStatusMessage() async -> String {
+        guard SpeechTranscriber.isAvailable else {
+            return "Apple Speech transcription is not available on this device."
+        }
+        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US")) else {
+            return "Apple Speech does not support English transcription on this device."
+        }
+        let transcriber = makeTranscriber(locale: locale)
+        switch await AssetInventory.status(forModules: [transcriber]) {
+        case .installed:
+            return "Ready on this device. English transcription runs on device."
+        case .supported:
+            return "English model will download when you first analyze an episode."
+        case .downloading:
+            return "English model is downloading. Transcription will start when it is ready."
+        case .unsupported:
+            return "Apple Speech cannot use the English model on this device."
+        @unknown default:
+            return "Apple Speech model status is unavailable."
+        }
     }
 
     public func transcribe(audioFile: URL, apiKey: String) async throws -> [TranscriptChunk] {
@@ -24,13 +40,13 @@ public struct AppleSpeechProvider: TranscriptionProvider, Sendable {
             throw TurtlePodError.localModelUnavailable("Apple Speech does not support English transcription on this device.")
         }
 
-        let transcriber = SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [],
-            attributeOptions: [.audioTimeRange]
-        )
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+        let transcriber = Self.makeTranscriber(locale: locale)
+        let status = await AssetInventory.status(forModules: [transcriber])
+        guard status != .unsupported else {
+            throw TurtlePodError.localModelUnavailable("Apple Speech cannot use the English model on this device.")
+        }
+        if status != .installed,
+           let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
             try await request.downloadAndInstall()
         }
 
@@ -50,6 +66,11 @@ public struct AppleSpeechProvider: TranscriptionProvider, Sendable {
             await analyzer.cancelAndFinishNow()
             throw error
         }
+    }
+
+    private static func makeTranscriber(locale: Locale) -> SpeechTranscriber {
+        SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [],
+                          attributeOptions: [.audioTimeRange])
     }
 
     private static func collectFinalResults(from transcriber: SpeechTranscriber) async throws -> [TranscriptChunk] {
