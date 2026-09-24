@@ -35,7 +35,7 @@ struct SettingsView: View {
                                         .tag(provider)
                                 }
                             }
-                            .pickerStyle(.segmented)
+                            .pickerStyle(.menu)
 
                             if model.settings.aiClassificationProvider == .appleFoundationModels {
                                 HStack(alignment: .top, spacing: 8) {
@@ -53,6 +53,12 @@ struct SettingsView: View {
                                 .background(theme.backgroundElevated)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
+                            if model.needsTypeSafeKey || model.needsOpenRouterKey {
+                                Text("Jev checks short transcript passages for ads. Transcript text is sent to the selected service; skip times come from the audio transcript.")
+                                    .font(.caption)
+                                    .foregroundStyle(theme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -66,7 +72,27 @@ struct SettingsView: View {
                                         .tag(provider)
                                 }
                             }
-                            .pickerStyle(.segmented)
+                            .pickerStyle(.menu)
+
+                            if model.settings.aiTranscriptionProvider == .appleSpeech {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "waveform")
+                                        .font(.caption)
+                                        .foregroundStyle(theme.teal)
+                                        .frame(width: 16)
+                                    Text(model.appleSpeechAvailabilityMessage)
+                                        .font(.caption)
+                                        .foregroundStyle(theme.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(theme.backgroundElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .task {
+                                    await model.refreshAppleSpeechModelStatus()
+                                }
+                            }
 
                             if model.settings.aiTranscriptionProvider == .localWhisper {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -144,7 +170,14 @@ struct SettingsView: View {
                                             .strokeBorder(theme.textTertiary.opacity(0.2), lineWidth: 0.5)
                                     )
                             }
-                        } else {
+                        }
+                        if model.needsTypeSafeKey {
+                            jevKeyField(title: "TypeSafe API Key", text: $model.typeSafeKeyDraft)
+                        }
+                        if model.needsOpenRouterKey {
+                            jevKeyField(title: "OpenRouter API Key", text: $model.openRouterKeyDraft)
+                        }
+                        if !model.needsOpenAIKey && !model.needsTypeSafeKey && !model.needsOpenRouterKey {
                             HStack(alignment: .top, spacing: 8) {
                                 Image(systemName: "checkmark.shield")
                                     .font(.caption)
@@ -216,6 +249,22 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .turtleNavBarBackground(theme)
     }
+
+    private func jevKeyField(title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(theme.textTertiary)
+            SecureField("API key", text: text)
+                .secretEntryStyle()
+                .font(.subheadline.monospaced())
+                .foregroundStyle(theme.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(theme.backgroundElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
 }
 
 private extension AIClassificationProviderKind {
@@ -225,6 +274,10 @@ private extension AIClassificationProviderKind {
             "OpenAI"
         case .appleFoundationModels:
             "Apple On-Device"
+        case .jevTypeSafe:
+            "Jev TypeSafe"
+        case .jevOpenRouter:
+            "Jev OpenRouter"
         }
     }
 }
@@ -236,6 +289,8 @@ private extension AITranscriptionProviderKind {
             "OpenAI"
         case .localWhisper:
             "Local Whisper"
+        case .appleSpeech:
+            "Apple Speech"
         }
     }
 }

@@ -110,6 +110,7 @@ struct EpisodeDetailView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                     .buttonStyle(.plain)
+                                    .disabled(model.busyEpisodeIDs.contains(episode.id))
                                 } else {
                                     Button {
                                         Task { await model.download(episode) }
@@ -126,10 +127,12 @@ struct EpisodeDetailView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                     .buttonStyle(.plain)
-                                    .disabled(episode.download?.state == .downloading)
+                                    .disabled(model.busyEpisodeIDs.contains(episode.id))
                                 }
                             }
                             .turtleCard()
+
+                            ReferenceTranscriptView(episode: episode)
 
                             // AI Analysis
                             VStack(alignment: .leading, spacing: 12) {
@@ -160,7 +163,7 @@ struct EpisodeDetailView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(episode.download?.state != .downloaded || episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
+                                .disabled(episode.download?.state != .downloaded || model.busyEpisodeIDs.contains(episode.id))
 
                                 if !episode.analysis.transcript.isEmpty {
                                     Button {
@@ -181,7 +184,7 @@ struct EpisodeDetailView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                     }
                                     .buttonStyle(.plain)
-                                    .disabled(episode.analysis.status == .transcribing || episode.analysis.status == .classifying)
+                                    .disabled(model.busyEpisodeIDs.contains(episode.id))
                                 }
 
                                 if !episode.analysis.adSegments.isEmpty {
@@ -245,6 +248,8 @@ struct EpisodeDetailView: View {
             return analysisStatusLabel(provider: "openai", model: "whisper-1")
         case .localWhisper:
             return analysisStatusLabel(provider: "local-whisper", model: "whisper-\(model.settings.whisperModelSize.rawValue)")
+        case .appleSpeech:
+            return analysisStatusLabel(provider: "apple-speech", model: "speech-transcriber")
         }
     }
 
@@ -258,6 +263,10 @@ struct EpisodeDetailView: View {
             return analysisStatusLabel(provider: "openai", model: "gpt-4o-mini")
         case .appleFoundationModels:
             return analysisStatusLabel(provider: "apple-foundation-models", model: "system-language-model")
+        case .jevTypeSafe:
+            return analysisStatusLabel(provider: "jev-typesafe", model: "jev-1.13.0")
+        case .jevOpenRouter:
+            return analysisStatusLabel(provider: "jev-openrouter", model: "typesafe/jev-1.13")
         }
     }
 
@@ -271,8 +280,14 @@ struct EpisodeDetailView: View {
             "OpenAI"
         case "local-whisper":
             "Local Whisper"
+        case "apple-speech":
+            "Apple Speech"
         case "apple-foundation-models":
             "Apple On-Device"
+        case "jev-typesafe":
+            "Jev via TypeSafe"
+        case "jev-openrouter":
+            "Jev via OpenRouter"
         default:
             provider
         }

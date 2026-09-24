@@ -6,6 +6,8 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>TurtlePod</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>TurtlePod transcribes downloaded podcast audio on your device to identify ad breaks.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

@@ -15,6 +15,7 @@
 		1AFB2BE1C7767C6C68D6D2A2 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CEEC883919C8E70DF458ECE /* PlayerView.swift */; };
 		1B19564511D1D1B704520A84 /* AdSegmentUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106BBE5DFC5261FD8C245A58 /* AdSegmentUtilities.swift */; };
 		2875B501C22F8661F9C2EA99 /* AppleFoundationModelsAdClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */; };
+		A9BD88EEA3044BDE82450002 /* AppleSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BD88EEA3044BDE82450001 /* AppleSpeechProvider.swift */; };
 		349DA09A7FFC85E9EAE0A7C4 /* TurtlePodModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD6BC3766DB886AF7886B4C5 /* TurtlePodModel.swift */; };
 		37702E5C629DA4B8242E3EF3 /* TurtlePodCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */; };
 		3FC4CADB464DCD7C209AB41A /* AVPlayerPlaybackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */; };
@@ -25,6 +26,7 @@
 		61C91ED9D4C855F782CD5EB3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335738CB09DA0F1B0503E241 /* SettingsView.swift */; };
 		7D65901F1B7D2748402AB92D /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E98B5C5BE3F800EB22E0D2 /* WhisperModelManager.swift */; };
 		874830402D9C6F3815ABFD69 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */; };
+		9A9C0327870B4C21A94DA002 /* JevAdClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9C0327870B4C21A94DA001 /* JevAdClassifier.swift */; };
 		97E8D3242E87E3D13DCEDF92 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3201575E7025181845F1191E /* DownloadsView.swift */; };
 		B46B42577BA7801FCD52E4D0 /* KeychainOpenAIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */; };
 		CF9C3F13C5DB28D4072C6676 /* TurtlePodApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9FC4D3919BDCF1B4F563F8 /* TurtlePodApp.swift */; };
@@ -35,6 +37,10 @@
 		F84F87682E9EECBAE987328C /* EpisodeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */; };
 		FC2A7B0F7363F9FA23C3AF49 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59AA65D47A27B492E08833D5 /* DesignSystem.swift */; };
 		FF98570121D97433BA6A4076 /* TextInputStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 243B67A8EA77921235E4B79E /* TextInputStyles.swift */; };
+		DC714C67E64FB56BC462116C /* ReferenceTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03A4B9F4941FC7F430D48F3 /* ReferenceTranscript.swift */; };
+		CDB357F7DBDB90097E3FA5EB /* ReferenceTranscriptAlignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7527F17D0AB0118316B8C903 /* ReferenceTranscriptAlignment.swift */; };
+		9672C011F41A49FCD1175D55 /* PodcastFeedMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8360B874F5F25EE7716A9D78 /* PodcastFeedMerger.swift */; };
+		863AEA401C961394F1BB56AD /* ReferenceTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80B18B9FA27233A91C550DE /* ReferenceTranscriptView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,15 +87,21 @@
 		5F248DDDF93C9C3DB10B6C2B /* Protocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocols.swift; sourceTree = "<group>"; };
 		6D9FC4D3919BDCF1B4F563F8 /* TurtlePodApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtlePodApp.swift; sourceTree = "<group>"; };
 		A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
+		9A9C0327870B4C21A94DA001 /* JevAdClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JevAdClassifier.swift; sourceTree = "<group>"; };
 		B04E7E5CE700AEA965E20A18 /* AudioChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChunker.swift; sourceTree = "<group>"; };
 		B2507707DC469B017EF69752 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysisPipeline.swift; sourceTree = "<group>"; };
 		BA8421AA73C3E3DFD1D7F414 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationModelsAdClassifier.swift; sourceTree = "<group>"; };
+		A9BD88EEA3044BDE82450001 /* AppleSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechProvider.swift; sourceTree = "<group>"; };
 		BD6BC3766DB886AF7886B4C5 /* TurtlePodModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtlePodModel.swift; sourceTree = "<group>"; };
 		CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainOpenAIKeyStore.swift; sourceTree = "<group>"; };
 		EA0787178F1A19BAF80334C1 /* TurtlePodCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = TurtlePodCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F259627375C74EF13CA2E72F /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B03A4B9F4941FC7F430D48F3 /* ReferenceTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceTranscript.swift; sourceTree = "<group>"; };
+		7527F17D0AB0118316B8C903 /* ReferenceTranscriptAlignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceTranscriptAlignment.swift; sourceTree = "<group>"; };
+		8360B874F5F25EE7716A9D78 /* PodcastFeedMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastFeedMerger.swift; sourceTree = "<group>"; };
+		D80B18B9FA27233A91C550DE /* ReferenceTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceTranscriptView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +130,7 @@
 				59AA65D47A27B492E08833D5 /* DesignSystem.swift */,
 				3201575E7025181845F1191E /* DownloadsView.swift */,
 				00F4D536A0562F44CA928894 /* EpisodeDetailView.swift */,
+				D80B18B9FA27233A91C550DE /* ReferenceTranscriptView.swift */,
 				365AE63E73EF78328A69D7D0 /* LibraryView.swift */,
 				4CEEC883919C8E70DF458ECE /* PlayerView.swift */,
 				B2507707DC469B017EF69752 /* RootView.swift */,
@@ -137,14 +150,19 @@
 				106BBE5DFC5261FD8C245A58 /* AdSegmentUtilities.swift */,
 				B69D73AF80313F5FAC18FB4B /* AIAnalysisPipeline.swift */,
 				BC5BB34E3428B2DEE250FD3D /* AppleFoundationModelsAdClassifier.swift */,
+				A9BD88EEA3044BDE82450001 /* AppleSpeechProvider.swift */,
 				B04E7E5CE700AEA965E20A18 /* AudioChunker.swift */,
 				19C810936F4A238F0CF9BC97 /* AVPlayerPlaybackService.swift */,
 				4FC4F2F803545C482B4D0EB2 /* EpisodeDescriptionCleaner.swift */,
 				4D44F750BB983A6A343A85B0 /* FileEpisodeDownloadService.swift */,
 				1AECB16C71E750574788BF06 /* JSONEpisodeStore.swift */,
 				CBEAAEE304CA1A1340C1BF94 /* KeychainOpenAIKeyStore.swift */,
+				9A9C0327870B4C21A94DA001 /* JevAdClassifier.swift */,
 				463BF31C5B05745B025A4230 /* LocalWhisperProvider.swift */,
 				F259627375C74EF13CA2E72F /* Models.swift */,
+				8360B874F5F25EE7716A9D78 /* PodcastFeedMerger.swift */,
+				7527F17D0AB0118316B8C903 /* ReferenceTranscriptAlignment.swift */,
+				B03A4B9F4941FC7F430D48F3 /* ReferenceTranscript.swift */,
 				A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */,
 				5F248DDDF93C9C3DB10B6C2B /* Protocols.swift */,
 				3E47A9C0029E566640A85C16 /* RSSPodcastFeedService.swift */,
@@ -271,13 +289,18 @@
 				3FC4CADB464DCD7C209AB41A /* AVPlayerPlaybackService.swift in Sources */,
 				1B19564511D1D1B704520A84 /* AdSegmentUtilities.swift in Sources */,
 				2875B501C22F8661F9C2EA99 /* AppleFoundationModelsAdClassifier.swift in Sources */,
+				A9BD88EEA3044BDE82450002 /* AppleSpeechProvider.swift in Sources */,
 				5AAC32D5F5953BDC3B9422AC /* AudioChunker.swift in Sources */,
 				1A755ECE57579CAB85C49646 /* EpisodeDescriptionCleaner.swift in Sources */,
 				E6BD706A514A30D9B306F189 /* FileEpisodeDownloadService.swift in Sources */,
 				F1B0780F1BF8B4D71002F5CD /* JSONEpisodeStore.swift in Sources */,
 				B46B42577BA7801FCD52E4D0 /* KeychainOpenAIKeyStore.swift in Sources */,
+				9A9C0327870B4C21A94DA002 /* JevAdClassifier.swift in Sources */,
 				47907FAEA58E4FFA1A9C0D35 /* LocalWhisperProvider.swift in Sources */,
 				F7F040DA4A26640E56B4372D /* Models.swift in Sources */,
+				9672C011F41A49FCD1175D55 /* PodcastFeedMerger.swift in Sources */,
+				CDB357F7DBDB90097E3FA5EB /* ReferenceTranscriptAlignment.swift in Sources */,
+				DC714C67E64FB56BC462116C /* ReferenceTranscript.swift in Sources */,
 				874830402D9C6F3815ABFD69 /* OpenAIProvider.swift in Sources */,
 				04B4EFD05211ADB0BEEFAAB2 /* Protocols.swift in Sources */,
 				15BAC0B05ABFAC50A66A081C /* RSSPodcastFeedService.swift in Sources */,
@@ -292,6 +315,7 @@
 				FC2A7B0F7363F9FA23C3AF49 /* DesignSystem.swift in Sources */,
 				97E8D3242E87E3D13DCEDF92 /* DownloadsView.swift in Sources */,
 				F84F87682E9EECBAE987328C /* EpisodeDetailView.swift in Sources */,
+				863AEA401C961394F1BB56AD /* ReferenceTranscriptView.swift in Sources */,
 				15DF98260A9A4202C0CE36D3 /* LibraryView.swift in Sources */,
 				1AFB2BE1C7767C6C68D6D2A2 /* PlayerView.swift in Sources */,
 				F52254ACF26B7D56AB938367 /* RootView.swift in Sources */,

@@ -46,6 +46,7 @@ targets:
       path: Generated/TurtlePod-Info.plist
       properties:
         CFBundleDisplayName: TurtlePod
+        NSSpeechRecognitionUsageDescription: "TurtlePod transcribes downloaded podcast audio on your device to identify ad breaks."
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
