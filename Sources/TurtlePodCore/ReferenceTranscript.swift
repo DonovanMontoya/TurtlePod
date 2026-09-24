@@ -16,6 +16,13 @@ public struct TranscriptSource: Codable, Equatable, Sendable {
         self.label = label
     }
 
+    public func hasConflictingLanguage(with preferredLanguage: String) -> Bool {
+        guard let language = language?.trimmingCharacters(in: .whitespacesAndNewlines), !language.isEmpty else { return false }
+        let preferred = preferredLanguage.lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).first
+        let actual = language.lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).first
+        return preferred != actual
+    }
+
     /// VTT voice tags can be removed cleanly; some SRT publishers repeat speaker
     /// labels as ordinary words in every cue, weakening reference alignment.
     public static func preferredSources(from sources: [TranscriptSource], preferredLanguage: String? = nil) -> [TranscriptSource] {
@@ -26,9 +33,7 @@ public struct TranscriptSource: Codable, Equatable, Sendable {
             func languageRank(_ source: TranscriptSource) -> Int {
                 guard let preferredLanguage, !preferredLanguage.isEmpty else { return 0 }
                 guard let language = source.language?.trimmingCharacters(in: .whitespacesAndNewlines), !language.isEmpty else { return 1 }
-                let preferred = preferredLanguage.lowercased().split(separator: "-").first
-                let actual = language.lowercased().split(separator: "-").first
-                return preferred == actual ? 0 : 2
+                return source.hasConflictingLanguage(with: preferredLanguage) ? 2 : 0
             }
             let leftLanguage = languageRank(lhs.element)
             let rightLanguage = languageRank(rhs.element)

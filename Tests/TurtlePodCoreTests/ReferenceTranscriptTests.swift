@@ -36,6 +36,9 @@ final class ReferenceTranscriptTests: XCTestCase {
             TranscriptSource.preferredSources(from: [spanishVTT, unknownVTT, englishSRT], preferredLanguage: "en"),
             [englishSRT, unknownVTT, spanishVTT]
         )
+        XCTAssertTrue(spanishVTT.hasConflictingLanguage(with: "en"))
+        XCTAssertFalse(englishSRT.hasConflictingLanguage(with: "en"))
+        XCTAssertFalse(unknownVTT.hasConflictingLanguage(with: "en"))
     }
 
     func testOmnyExtensionlessSRTWithFeedAndResponseMIMETypes() throws {
