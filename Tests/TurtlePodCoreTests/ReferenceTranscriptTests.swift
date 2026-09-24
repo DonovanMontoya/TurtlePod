@@ -28,6 +28,16 @@ final class ReferenceTranscriptTests: XCTestCase {
         XCTAssertEqual(TranscriptSource.preferredSources(from: [srt, text]), [srt, text])
     }
 
+    func testPrefersMatchingLanguageBeforeFormatForEnglishSpeech() {
+        let spanishVTT = TranscriptSource(url: URL(string: "https://example.com/es.vtt")!, type: "text/vtt", language: "es")
+        let englishSRT = TranscriptSource(url: URL(string: "https://example.com/en.srt")!, type: "application/srt", language: "en-US")
+        let unknownVTT = TranscriptSource(url: URL(string: "https://example.com/unknown.vtt")!, type: "text/vtt")
+        XCTAssertEqual(
+            TranscriptSource.preferredSources(from: [spanishVTT, unknownVTT, englishSRT], preferredLanguage: "en"),
+            [englishSRT, unknownVTT, spanishVTT]
+        )
+    }
+
     func testOmnyExtensionlessSRTWithFeedAndResponseMIMETypes() throws {
         // My Favorite Murder publishes application/srt in RSS, but Omny responds
         // text/plain at /transcript?format=SubRip. Neither URL has an extension.

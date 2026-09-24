@@ -715,7 +715,10 @@ final class TurtlePodModel: ObservableObject {
                 referenceMessages[episode.id] = "Could not refresh transcript links: \(error.localizedDescription)"
             }
         }
-        let sources = TranscriptSource.preferredSources(from: self.episode(withID: episode.id)?.transcriptSources ?? [])
+        let sources = TranscriptSource.preferredSources(
+            from: self.episode(withID: episode.id)?.transcriptSources ?? [],
+            preferredLanguage: settings.aiTranscriptionProvider == .appleSpeech ? "en" : nil
+        )
         guard !sources.isEmpty else {
             if force { referenceMessages[episode.id] = "This feed has no transcript links. Import a transcript file or direct URL." }
             return

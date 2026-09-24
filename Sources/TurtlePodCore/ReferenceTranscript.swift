@@ -18,11 +18,21 @@ public struct TranscriptSource: Codable, Equatable, Sendable {
 
     /// VTT voice tags can be removed cleanly; some SRT publishers repeat speaker
     /// labels as ordinary words in every cue, weakening reference alignment.
-    public static func preferredSources(from sources: [TranscriptSource]) -> [TranscriptSource] {
+    public static func preferredSources(from sources: [TranscriptSource], preferredLanguage: String? = nil) -> [TranscriptSource] {
         sources.enumerated().sorted { lhs, rhs in
             func isVTT(_ source: TranscriptSource) -> Bool {
                 source.type.lowercased().hasPrefix("text/vtt") || source.url.pathExtension.lowercased() == "vtt"
             }
+            func languageRank(_ source: TranscriptSource) -> Int {
+                guard let preferredLanguage, !preferredLanguage.isEmpty else { return 0 }
+                guard let language = source.language?.trimmingCharacters(in: .whitespacesAndNewlines), !language.isEmpty else { return 1 }
+                let preferred = preferredLanguage.lowercased().split(separator: "-").first
+                let actual = language.lowercased().split(separator: "-").first
+                return preferred == actual ? 0 : 2
+            }
+            let leftLanguage = languageRank(lhs.element)
+            let rightLanguage = languageRank(rhs.element)
+            if leftLanguage != rightLanguage { return leftLanguage < rightLanguage }
             let left = isVTT(lhs.element)
             let right = isVTT(rhs.element)
             return left == right ? lhs.offset < rhs.offset : left
