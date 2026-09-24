@@ -326,7 +326,7 @@ final class TurtlePodModel: ObservableObject {
     }
 
     func refreshAppleSpeechModelStatus() async {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, macOS 26.0, *) {
             appleSpeechAvailabilityMessage = await AppleSpeechProvider.modelStatusMessage()
         } else {
             appleSpeechAvailabilityMessage = "Requires iOS 26 or later."
@@ -500,7 +500,7 @@ final class TurtlePodModel: ObservableObject {
         case .localWhisper:
             transcriptionProvider = LocalWhisperProvider(modelSize: settings.whisperModelSize)
         case .appleSpeech:
-            if #available(iOS 26.0, *) {
+            if #available(iOS 26.0, macOS 26.0, *) {
                 transcriptionProvider = AppleSpeechProvider()
             } else {
                 throw TurtlePodError.localModelUnavailable("Apple Speech transcription requires iOS 26 or later.")
