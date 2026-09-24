@@ -702,11 +702,13 @@ final class TurtlePodModel: ObservableObject {
     }
 
     private func fetchPublisherReferenceIfNeeded(_ episode: PodcastEpisode, force: Bool = false) async {
+        var replacedMismatchedReference = false
         if let cached = episode.referenceTranscript {
             let conflictsWithAppleSpeech = settings.aiTranscriptionProvider == .appleSpeech
                 && cached.source.label == "Publisher"
                 && cached.source.hasConflictingLanguage(with: "en")
             if conflictsWithAppleSpeech {
+                replacedMismatchedReference = true
                 await updateEpisode(episode.id) { episode in
                     episode.referenceTranscript = nil
                     episode.analysis.referenceComparison = nil
@@ -715,7 +717,7 @@ final class TurtlePodModel: ObservableObject {
                 return
             }
         }
-        if episode.transcriptSources == nil || force,
+        if episode.transcriptSources == nil || force || replacedMismatchedReference,
            let savedFeed = feeds.first(where: { $0.id == episode.feedID }) {
             do {
                 let fresh = try await feedService.fetchFeed(from: savedFeed.feedURL)
