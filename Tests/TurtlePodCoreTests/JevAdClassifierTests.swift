@@ -7,9 +7,7 @@ import XCTest
 
 final class JevAdClassifierTests: XCTestCase {
     private func classifier(_ route: JevRoute) -> JevAdClassifier {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [JevURLProtocol.self]
-        return JevAdClassifier(route: route, session: URLSession(configuration: config))
+        JevAdClassifier(route: route, transport: { request in try JevMock.response(to: request) })
     }
 
     func testBothRoutesUseDecisionAPIAndAudioTimestamps() async throws {
@@ -63,11 +61,8 @@ final class JevAdClassifierTests: XCTestCase {
     }
 }
 
-private final class JevURLProtocol: URLProtocol, @unchecked Sendable {
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-    override func startLoading() {
-        do {
+private enum JevMock {
+    static func response(to request: URLRequest) throws -> (Data, URLResponse) {
             let url = try XCTUnwrap(request.url)
             let body = try XCTUnwrap(request.httpBody)
             let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
@@ -90,12 +85,6 @@ private final class JevURLProtocol: URLProtocol, @unchecked Sendable {
             })
             let result: [String: Any] = ["answers": state.values.contains { $0["target"] == "incomplete" } ? [:] : answers]
             let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: try JSONSerialization.data(withJSONObject: result))
-            client?.urlProtocolDidFinishLoading(self)
-        } catch {
-            client?.urlProtocol(self, didFailWithError: error)
-        }
+            return (try JSONSerialization.data(withJSONObject: result), response)
     }
-    override func stopLoading() { }
 }

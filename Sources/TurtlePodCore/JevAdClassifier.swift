@@ -45,12 +45,17 @@ public final class JevAdClassifier: AdClassificationProvider {
     public let classificationModel: String
 
     private let route: JevRoute
-    private let session: URLSession
+    private let transport: @Sendable (URLRequest) async throws -> (Data, URLResponse)
     private let endpoint: URL
 
-    public init(route: JevRoute, session: URLSession = .shared, endpoint: URL? = nil) {
+    public init(
+        route: JevRoute,
+        session: URLSession = .shared,
+        endpoint: URL? = nil,
+        transport: (@Sendable (URLRequest) async throws -> (Data, URLResponse))? = nil
+    ) {
         self.route = route
-        self.session = session
+        self.transport = transport ?? { try await session.data(for: $0) }
         self.endpoint = endpoint ?? route.endpoint
         providerName = route.provider
         classificationModel = route.model
@@ -123,7 +128,7 @@ public final class JevAdClassifier: AdClassificationProvider {
 
     private func send(_ request: URLRequest) async throws -> Data {
         for attempt in 0..<3 {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await transport(request)
             guard let http = response as? HTTPURLResponse else { throw JevClassifierError.invalidResponse }
             if (http.statusCode == 429 || http.statusCode == 529), attempt < 2 {
                 try await Task.sleep(for: .seconds(Double(attempt + 1)))
