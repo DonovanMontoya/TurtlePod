@@ -702,8 +702,22 @@ final class TurtlePodModel: ObservableObject {
     }
 
     private func fetchPublisherReferenceIfNeeded(_ episode: PodcastEpisode, force: Bool = false) async {
-        if !force, episode.referenceTranscript != nil { return }
-        if episode.transcriptSources == nil || force,
+        var replacedMismatchedReference = false
+        if let cached = episode.referenceTranscript {
+            let conflictsWithAppleSpeech = settings.aiTranscriptionProvider == .appleSpeech
+                && cached.source.label == "Publisher"
+                && cached.source.hasConflictingLanguage(with: "en")
+            if conflictsWithAppleSpeech {
+                replacedMismatchedReference = true
+                await updateEpisode(episode.id) { episode in
+                    episode.referenceTranscript = nil
+                    episode.analysis.referenceComparison = nil
+                }
+            } else if !force {
+                return
+            }
+        }
+        if episode.transcriptSources == nil || force || replacedMismatchedReference,
            let savedFeed = feeds.first(where: { $0.id == episode.feedID }) {
             do {
                 let fresh = try await feedService.fetchFeed(from: savedFeed.feedURL)
@@ -715,7 +729,13 @@ final class TurtlePodModel: ObservableObject {
                 referenceMessages[episode.id] = "Could not refresh transcript links: \(error.localizedDescription)"
             }
         }
-        let sources = TranscriptSource.preferredSources(from: self.episode(withID: episode.id)?.transcriptSources ?? [])
+        let preferredLanguage = settings.aiTranscriptionProvider == .appleSpeech ? "en" : nil
+        let sources = TranscriptSource.preferredSources(
+            from: self.episode(withID: episode.id)?.transcriptSources ?? [],
+            preferredLanguage: preferredLanguage
+        ).filter { source in
+            preferredLanguage.map { !source.hasConflictingLanguage(with: $0) } ?? true
+        }
         guard !sources.isEmpty else {
             if force { referenceMessages[episode.id] = "This feed has no transcript links. Import a transcript file or direct URL." }
             return
