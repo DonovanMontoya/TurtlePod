@@ -4,11 +4,18 @@ public final class DefaultTranscriptService: TranscriptService {
     private let provider: TranscriptionProvider
     private let chunker: AudioChunker
     private let maxChunkDuration: TimeInterval
+    private let maxConcurrentChunks: Int
 
-    public init(provider: TranscriptionProvider, chunker: AudioChunker = AVAssetAudioChunker(), maxChunkDuration: TimeInterval = 600) {
+    public init(
+        provider: TranscriptionProvider,
+        chunker: AudioChunker = AVAssetAudioChunker(),
+        maxChunkDuration: TimeInterval = 600,
+        maxConcurrentChunks: Int = 4
+    ) {
         self.provider = provider
         self.chunker = chunker
         self.maxChunkDuration = maxChunkDuration
+        self.maxConcurrentChunks = max(maxConcurrentChunks, 1)
     }
 
     public func transcribeDownloadedEpisode(
@@ -20,30 +27,47 @@ public final class DefaultTranscriptService: TranscriptService {
             throw TurtlePodError.notDownloaded
         }
 
+        if provider.transcribesWholeFile {
+            // Progress is reported in percent through the same chunk callback.
+            return try await provider.transcribe(audioFile: localFileURL, apiKey: apiKey) { fraction in
+                await progressDidChange?(Int((min(max(fraction, 0), 1) * 100).rounded()), 100)
+            }
+        }
+
         let chunks = try await chunker.chunks(for: localFileURL, maxDuration: maxChunkDuration)
         defer {
             for chunk in chunks where chunk.isTemporary {
                 try? FileManager.default.removeItem(at: chunk.fileURL)
             }
         }
-        var transcript: [TranscriptChunk] = []
 
-        for (index, chunk) in chunks.enumerated() {
-            try Task.checkCancellation()
-            let chunkTranscript = try await provider.transcribe(audioFile: chunk.fileURL, apiKey: apiKey)
-                .map { item in
-                    TranscriptChunk(
-                        start: item.start + chunk.startOffset,
-                        end: item.end + chunk.startOffset,
-                        text: item.text
-                    )
+        // Upload a few chunks at once; results are reassembled in timeline order.
+        let provider = provider
+        var pieces = [[TranscriptChunk]](repeating: [], count: chunks.count)
+        var completed = 0
+        try await withThrowingTaskGroup(of: (Int, [TranscriptChunk]).self) { group in
+            var next = 0
+            func enqueue() {
+                guard next < chunks.count else { return }
+                let index = next
+                let chunk = chunks[index]
+                next += 1
+                group.addTask {
+                    let items = try await provider.transcribe(audioFile: chunk.fileURL, apiKey: apiKey)
+                    return (index, items.map {
+                        TranscriptChunk(start: $0.start + chunk.startOffset, end: $0.end + chunk.startOffset, text: $0.text)
+                    })
                 }
-            transcript.append(contentsOf: chunkTranscript)
-
-            await progressDidChange?(index + 1, chunks.count)
+            }
+            for _ in 0..<min(maxConcurrentChunks, chunks.count) { enqueue() }
+            while let (index, items) = try await group.next() {
+                pieces[index] = items
+                completed += 1
+                await progressDidChange?(completed, chunks.count)
+                enqueue()
+            }
         }
-
-        return transcript
+        return pieces.flatMap { $0 }
     }
 }
 
@@ -68,6 +92,33 @@ public final class DefaultAdDetectionService: AdDetectionService {
             throw TurtlePodError.unsupportedResponse
         }
         let sorted = transcript.sorted { $0.start < $1.start }
+        let referenceGaps = comparison?.isReliable == true ? comparison?.candidates ?? [] : []
+        if let scorer = provider as? CueProbabilityClassifier {
+            let cues = sorted.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            let missing = cues.map { cue in
+                referenceGaps.contains { cue.start < $0.end && cue.end > $0.start }
+            }
+            do {
+                let probabilities = try await scorer.cueProbabilities(cues, apiKey: apiKey)
+                return AdSegmentMerger.merge(CueAdSegmenter.segments(
+                    cues: cues,
+                    probabilities: probabilities,
+                    missingFromReference: missing,
+                    reason: referenceGaps.isEmpty
+                        ? "Identified as advertising."
+                        : "Identified as advertising, checked against the publisher's transcript.",
+                    provider: scorer.providerName,
+                    model: scorer.classificationModel
+                ).filter(\.isValid), gapTolerance: gapTolerance)
+            } catch where !referenceGaps.isEmpty && !(error is CancellationError) {
+                // Offline or no key: the publisher's ad-free transcript alone still finds the breaks.
+                return ReferenceAdSegments.segments(from: referenceGaps)
+            }
+        }
+        if provider.classifiesWholeTranscript {
+            let detected = try await provider.classify(transcript: sorted, apiKey: apiKey)
+            return AdSegmentMerger.merge(detected.filter(\.isValid), gapTolerance: gapTolerance)
+        }
         // Bounded requests with one cue of overlap. Every cue is checked, even
         // when it matches the reference (which may contain host-read sponsors).
         var windows: [[TranscriptChunk]] = []

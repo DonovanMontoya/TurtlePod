@@ -285,6 +285,14 @@ public enum WhisperModelSize: String, Codable, CaseIterable, Equatable, Sendable
     }
 }
 
+public extension AITranscriptionProviderKind {
+    /// New installs transcribe on device when they can: it's free and faster.
+    /// Saved settings without a choice predate Apple Speech and keep OpenAI.
+    static var preferredDefault: AITranscriptionProviderKind {
+        if #available(iOS 26.0, macOS 26.0, *) { .appleSpeech } else { .openAI }
+    }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
     public var aiAnalysisEnabled: Bool
     public var aiClassificationProvider: AIClassificationProviderKind
@@ -298,10 +306,10 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public init(
         aiAnalysisEnabled: Bool = false,
         aiClassificationProvider: AIClassificationProviderKind = .openAI,
-        aiTranscriptionProvider: AITranscriptionProviderKind = .openAI,
+        aiTranscriptionProvider: AITranscriptionProviderKind = .preferredDefault,
         whisperModelSize: WhisperModelSize = .base,
         autoSkipEnabled: Bool = true,
-        adSkipConfidenceThreshold: Double = 0.72,
+        adSkipConfidenceThreshold: Double = 0.8,
         analyzeAfterDownload: Bool = true
     ) {
         self.aiAnalysisEnabled = aiAnalysisEnabled
@@ -330,7 +338,9 @@ public struct AppSettings: Codable, Equatable, Sendable {
         aiTranscriptionProvider = try container.decodeIfPresent(AITranscriptionProviderKind.self, forKey: .aiTranscriptionProvider) ?? .openAI
         whisperModelSize = try container.decodeIfPresent(WhisperModelSize.self, forKey: .whisperModelSize) ?? .base
         autoSkipEnabled = try container.decodeIfPresent(Bool.self, forKey: .autoSkipEnabled) ?? true
-        adSkipConfidenceThreshold = try container.decodeIfPresent(Double.self, forKey: .adSkipConfidenceThreshold) ?? 0.72
+        let threshold = try container.decodeIfPresent(Double.self, forKey: .adSkipConfidenceThreshold)
+        // 0.72 was the old default, never a chosen value; move it to the new one.
+        adSkipConfidenceThreshold = threshold.map { abs($0 - 0.72) < 0.001 ? 0.8 : $0 } ?? 0.8
         analyzeAfterDownload = try container.decodeIfPresent(Bool.self, forKey: .analyzeAfterDownload) ?? true
     }
 }

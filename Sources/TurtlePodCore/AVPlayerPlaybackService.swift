@@ -17,6 +17,8 @@ public final class AVPlayerPlaybackService: PlaybackService, @unchecked Sendable
     private let player = AVPlayer()
     private var loadedEpisode: PodcastEpisode?
     private var timeObserver: Any?
+    private var boundaryObserver: Any?
+    private var boundaryTimes: [TimeInterval] = []
     private var statusObservation: NSKeyValueObservation?
     private var endObserver: NSObjectProtocol?
     private var interruptionObserver: NSObjectProtocol?
@@ -32,6 +34,8 @@ public final class AVPlayerPlaybackService: PlaybackService, @unchecked Sendable
     public var onStateChanged: (() -> Void)?
     /// Called when the loaded item plays to its end.
     public var onItemFinished: (() -> Void)?
+    /// Called when playback crosses a time set with `setBoundaryTimes`.
+    public var onBoundaryCrossed: ((TimeInterval) -> Void)?
 
     public init() {
         player.automaticallyWaitsToMinimizeStalling = true
@@ -97,6 +101,7 @@ public final class AVPlayerPlaybackService: PlaybackService, @unchecked Sendable
         player.pause()
         loadedEpisode = episode
         self.source = source
+        setBoundaryTimes([])
         player.replaceCurrentItem(with: item)
         observeEnd(of: item)
         if position > 0 {
@@ -113,6 +118,7 @@ public final class AVPlayerPlaybackService: PlaybackService, @unchecked Sendable
     }
 
     public func unload() {
+        setBoundaryTimes([])
         player.pause()
         player.replaceCurrentItem(with: nil)
         loadedEpisode = nil
@@ -139,8 +145,33 @@ public final class AVPlayerPlaybackService: PlaybackService, @unchecked Sendable
         if let duration = itemDuration {
             target = min(target, duration)
         }
-        await player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
-        onTimeChanged?(target)
+        // Local files seek exactly for free; a loose seek can land back inside an ad.
+        let tolerance: CMTime = if case .local = source { .zero } else { .positiveInfinity }
+        await player.seek(to: CMTime(seconds: target, preferredTimescale: 600),
+                          toleranceBefore: tolerance, toleranceAfter: tolerance)
+        onTimeChanged?(elapsed)
+    }
+
+    /// Fires `onBoundaryCrossed` when playback reaches any of these times.
+    /// Unlike the periodic tick, iOS delivers these on time with the screen locked.
+    public func setBoundaryTimes(_ times: [TimeInterval]) {
+        let times = times.filter { $0.isFinite && $0 >= 0 }.sorted()
+        guard times != boundaryTimes || (boundaryObserver == nil && !times.isEmpty) else { return }
+        boundaryTimes = times
+        if let boundaryObserver {
+            player.removeTimeObserver(boundaryObserver)
+            self.boundaryObserver = nil
+        }
+        let values = times.map {
+            NSValue(time: CMTime(seconds: $0, preferredTimescale: 600))
+        }
+        guard !values.isEmpty else { return }
+        boundaryObserver = player.addBoundaryTimeObserver(forTimes: values, queue: .main) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.loadedEpisode != nil else { return }
+                self.onBoundaryCrossed?(self.elapsed)
+            }
+        }
     }
 
     public func setRate(_ rate: Float) {

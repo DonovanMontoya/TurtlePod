@@ -9,6 +9,8 @@ public struct LocalWhisperProvider: TranscriptionProvider, Sendable {
         "whisper-\(modelSize.rawValue)"
     }
 
+    public var transcribesWholeFile: Bool { true }
+
     public init(modelSize: WhisperModelSize = .base) {
         self.modelSize = modelSize
     }

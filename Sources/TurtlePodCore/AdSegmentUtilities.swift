@@ -83,3 +83,10 @@ public actor AutoSkipController {
         self.lastSkip = nil
     }
 }
+
+extension AdSegment {
+    /// Finite, forward, on the timeline, with a probability-like confidence.
+    var isValid: Bool {
+        start.isFinite && end.isFinite && confidence.isFinite && start >= 0 && end > start && (0...1).contains(confidence)
+    }
+}

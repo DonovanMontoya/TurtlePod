@@ -230,6 +230,8 @@ struct SettingsView: View {
     private var classificationDetail: some View {
         if model.settings.aiClassificationProvider == .appleFoundationModels {
             DetailNote(symbol: "cpu", text: model.appleFoundationModelsAvailabilityMessage)
+        } else if model.settings.aiClassificationProvider == .openAI {
+            DetailNote(symbol: "text.magnifyingglass", text: "Checks every line of the transcript for ads in one pass, usually about a third of a cent per episode. Only transcript text is sent.")
         } else if model.needsTypeSafeKey || model.needsOpenRouterKey {
             DetailNote(symbol: "text.magnifyingglass", text: "Jev checks short transcript passages for ads. Only transcript text is sent; skip times come from your audio.")
         }
@@ -347,7 +349,7 @@ private struct DetailNote: View {
 private extension AIClassificationProviderKind {
     var displayName: String {
         switch self {
-        case .openAI: "OpenAI"
+        case .openAI: "OpenAI Decisions"
         case .appleFoundationModels: "Apple on-device"
         case .jevTypeSafe: "Jev via TypeSafe"
         case .jevOpenRouter: "Jev via OpenRouter"

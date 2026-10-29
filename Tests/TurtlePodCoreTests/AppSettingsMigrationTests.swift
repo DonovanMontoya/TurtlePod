@@ -19,4 +19,11 @@ final class AppSettingsMigrationTests: XCTestCase {
         XCTAssertFalse(settings.autoSkipEnabled)
         XCTAssertEqual(settings.adSkipConfidenceThreshold, 0.81)
     }
+
+    func testOldDefaultThresholdMovesToNewDefault() throws {
+        let old = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"adSkipConfidenceThreshold": 0.72}"#.utf8))
+        XCTAssertEqual(old.adSkipConfidenceThreshold, 0.8)
+        let missing = try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
+        XCTAssertEqual(missing.adSkipConfidenceThreshold, 0.8)
+    }
 }

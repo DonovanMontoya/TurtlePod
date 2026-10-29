@@ -91,3 +91,23 @@ public enum ReferenceTranscriptAlignment {
         return positions
     }
 }
+
+/// Skip ranges taken straight from a reliable comparison with an ad-free
+/// publisher transcript: long stretches of audio the publisher never wrote down.
+public enum ReferenceAdSegments {
+    public static func segments(from gaps: [TranscriptGap], bridging: TimeInterval = 4, minimumDuration: TimeInterval = 8) -> [AdSegment] {
+        var merged: [TranscriptGap] = []
+        for gap in gaps.sorted(by: { $0.start < $1.start }) {
+            if let last = merged.last, gap.start - last.end <= bridging {
+                merged[merged.count - 1].end = max(last.end, gap.end)
+            } else {
+                merged.append(gap)
+            }
+        }
+        return merged.filter { $0.end - $0.start >= minimumDuration }.map {
+            AdSegment(start: $0.start, end: $0.end, confidence: 0.9,
+                      reason: "This audio is missing from the publisher's transcript.",
+                      provider: "publisher-transcript", model: "alignment")
+        }
+    }
+}

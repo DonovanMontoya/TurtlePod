@@ -107,6 +107,7 @@ final class TurtlePodModel: ObservableObject {
         }
         if let loaded = playback.loadedEpisodeID, let episode = episodes[loaded] {
             playback.updateLoadedEpisode(episode)
+            scheduleAdSkips(for: episode)
         }
     }
 
@@ -325,7 +326,7 @@ final class TurtlePodModel: ObservableObject {
                 transcriptionProgressDidChange: { currentChunk, totalChunks in
                     let progress = totalChunks > 0 ? Double(currentChunk) / Double(totalChunks) : 0
                     self.setTranscriptionProgress(progress, for: episode.id)
-                    self.statusMessage = "Transcribing with \(transcriptionLabel): chunk \(currentChunk) of \(totalChunks)…"
+                    self.statusMessage = "Transcribing with \(transcriptionLabel): \(Int((progress * 100).rounded()))%…"
                 }
             )
             await updateEpisode(episode.id) { episode in
@@ -418,6 +419,16 @@ final class TurtlePodModel: ObservableObject {
         } else {
             appleSpeechAvailabilityMessage = "Requires iOS 26 or later."
         }
+    }
+
+    /// Asks the player to wake us at each ad's start, so skips land on time
+    /// even while the phone is locked and the periodic tick is throttled.
+    func scheduleAdSkips(for episode: PodcastEpisode) {
+        guard case .local = playback.source, playback.loadedEpisodeID == episode.id else {
+            playback.setBoundaryTimes([])
+            return
+        }
+        playback.setBoundaryTimes(episode.analysis.adSegments.map { $0.start + 0.05 })
     }
 
     func evaluateAutoSkip(at time: TimeInterval) async {
@@ -534,6 +545,10 @@ final class TurtlePodModel: ObservableObject {
         switch provider {
         case "openai":
             "OpenAI"
+        case "openai-decisions":
+            "OpenAI Decisions"
+        case "publisher-transcript":
+            "Publisher Transcript"
         case "local-whisper":
             "Local Whisper"
         case "apple-speech":
@@ -611,7 +626,7 @@ final class TurtlePodModel: ObservableObject {
             guard let openAIAPIKey, !openAIAPIKey.isEmpty else {
                 throw TurtlePodError.apiKeyMissing
             }
-            classificationProvider = openAIProvider
+            classificationProvider = OpenAIDecisionsAdClassifier()
             classificationAPIKey = openAIAPIKey
         case .appleFoundationModels:
             try AppleFoundationModelsAdClassifier.validateAvailability()
