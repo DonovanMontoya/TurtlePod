@@ -48,26 +48,30 @@ public struct AVAssetAudioChunker: AudioChunker {
         }
 
         var chunks: [AudioChunk] = []
-        var outputs: [URL] = []
-        var completed = false
-        defer {
-            if !completed {
-                for url in outputs { try? FileManager.default.removeItem(at: url) }
-            }
-        }
         var offset: TimeInterval = 0
         while offset < duration {
-            try Task.checkCancellation()
             let chunkDuration = min(maxDuration, duration - offset)
-            let outputURL = outputDirectory.appending(path: "\(UUID().uuidString).m4a")
-            outputs.append(outputURL)
-
-            try await export(asset: asset, start: offset, duration: chunkDuration, outputURL: outputURL)
-            chunks.append(AudioChunk(fileURL: outputURL, startOffset: offset, duration: chunkDuration, isTemporary: true))
+            chunks.append(AudioChunk(
+                fileURL: outputDirectory.appending(path: "\(UUID().uuidString).m4a"),
+                startOffset: offset, duration: chunkDuration, isTemporary: true
+            ))
             offset += chunkDuration
         }
 
-        completed = true
+        // Exports are independent, so encode them side by side.
+        do {
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for chunk in chunks {
+                    group.addTask {
+                        try await export(asset: asset, start: chunk.startOffset, duration: chunk.duration, outputURL: chunk.fileURL)
+                    }
+                }
+                try await group.waitForAll()
+            }
+        } catch {
+            for chunk in chunks { try? FileManager.default.removeItem(at: chunk.fileURL) }
+            throw error
+        }
         return chunks
     }
 

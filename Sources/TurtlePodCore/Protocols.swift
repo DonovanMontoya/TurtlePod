@@ -60,6 +60,26 @@ public protocol TranscriptionProvider: Sendable {
     var transcriptionModel: String { get }
 
     func transcribe(audioFile: URL, apiKey: String) async throws -> [TranscriptChunk]
+    /// True when the provider reads a whole episode itself; splitting it only
+    /// adds re-encoding and cold starts.
+    var transcribesWholeFile: Bool { get }
+    func transcribe(
+        audioFile: URL,
+        apiKey: String,
+        progress: (@Sendable (_ fraction: Double) async -> Void)?
+    ) async throws -> [TranscriptChunk]
+}
+
+public extension TranscriptionProvider {
+    var transcribesWholeFile: Bool { false }
+
+    func transcribe(
+        audioFile: URL,
+        apiKey: String,
+        progress: (@Sendable (_ fraction: Double) async -> Void)?
+    ) async throws -> [TranscriptChunk] {
+        try await transcribe(audioFile: audioFile, apiKey: apiKey)
+    }
 }
 
 public protocol AdClassificationProvider: Sendable {
