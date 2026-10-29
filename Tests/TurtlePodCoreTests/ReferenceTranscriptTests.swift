@@ -118,4 +118,42 @@ final class ReferenceTranscriptTests: XCTestCase {
         XCTAssertEqual(merged.episodes[0].analysis.status, .complete)
         XCTAssertEqual(merged.episodes[0].title, "New title")
     }
+
+    func testFeedRefreshTakesFreshMetadataAndPreservesEpisodeState() {
+        let url = URL(string: "https://example.com/feed")!
+        var saved = PodcastFeed(title: "Old", feedURL: url, author: "Old Author", lastRefreshedAt: Date(timeIntervalSince1970: 0))
+        var episode = PodcastEpisode(feedID: saved.id, title: "Episode", audioURL: url.appending(path: "a.mp3"), guid: "a")
+        episode.download = EpisodeDownload(state: .downloaded, localFileURL: URL(fileURLWithPath: "/tmp/a.mp3"), progress: 1)
+        episode.autoSkipEnabled = false
+        episode.referenceTranscript = ReferenceTranscript(source: TranscriptSource(url: URL(string: "https://example.com/a.vtt")!), text: "Text")
+        saved.episodes = [episode]
+
+        let refreshedAt = Date(timeIntervalSince1970: 1_000)
+        var fresh = PodcastFeed(
+            title: "New", feedURL: url, author: "New Author", summary: "About",
+            websiteURL: URL(string: "https://example.com")!, lastRefreshedAt: refreshedAt
+        )
+        fresh.episodes = [
+            PodcastEpisode(feedID: fresh.id, title: "Episode", audioURL: url.appending(path: "a.mp3"), guid: "a",
+                           chaptersURL: URL(string: "https://example.com/a.json")!, episodeNumber: 7),
+            PodcastEpisode(feedID: fresh.id, title: "Brand New", audioURL: url.appending(path: "b.mp3"), guid: "b")
+        ]
+
+        let merged = PodcastFeedMerger.merge(fresh, into: saved)
+
+        XCTAssertEqual(merged.id, saved.id)
+        XCTAssertEqual(merged.author, "New Author")
+        XCTAssertEqual(merged.summary, "About")
+        XCTAssertEqual(merged.websiteURL, fresh.websiteURL)
+        XCTAssertEqual(merged.lastRefreshedAt, refreshedAt)
+        XCTAssertEqual(merged.episodes.count, 2)
+        XCTAssertEqual(merged.episodes[0].id, episode.id)
+        XCTAssertEqual(merged.episodes[0].download, episode.download)
+        XCTAssertFalse(merged.episodes[0].autoSkipEnabled)
+        XCTAssertEqual(merged.episodes[0].referenceTranscript, episode.referenceTranscript)
+        XCTAssertEqual(merged.episodes[0].chaptersURL, fresh.episodes[0].chaptersURL)
+        XCTAssertEqual(merged.episodes[0].episodeNumber, 7)
+        XCTAssertEqual(merged.episodes[1].id, fresh.episodes[1].id)
+        XCTAssertEqual(merged.episodes[1].feedID, saved.id)
+    }
 }

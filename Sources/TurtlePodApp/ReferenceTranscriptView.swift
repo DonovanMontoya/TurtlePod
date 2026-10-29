@@ -14,10 +14,7 @@ struct ReferenceTranscriptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Reference Transcript", systemImage: "text.alignleft")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(theme.textPrimary)
-            Text("Use a publisher transcript or import one exported from your podcast app. TurtlePod compares it with your downloaded audio to look for inserted sections.")
+            Text("A publisher transcript, or one exported from another podcast app, helps find ads inserted into your download.")
                 .font(.caption)
                 .foregroundStyle(theme.textSecondary)
 
@@ -42,11 +39,17 @@ struct ReferenceTranscriptView: View {
                 }
             }
 
-            Button("Find Publisher Transcript") {
-                importError = nil
-                Task { await model.fetchReference(episode.id) }
+            HStack(spacing: 10) {
+                Button("Find publisher transcript") {
+                    importError = nil
+                    Task { await model.fetchReference(episode.id) }
+                }
+                .buttonStyle(SecondaryButtonStyle(tint: theme.teal))
+                .disabled(isBusy)
+                Button("Import file") { importing = true }
+                    .buttonStyle(SecondaryButtonStyle(tint: theme.textSecondary))
+                    .disabled(isBusy)
             }
-            .disabled(isBusy)
             HStack {
                 TextField("Direct transcript URL", text: $transcriptURL)
                     .textFieldStyle(.roundedBorder)
@@ -61,8 +64,6 @@ struct ReferenceTranscriptView: View {
                 }
                 .disabled(isBusy || transcriptURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            Button("Import Transcript File") { importing = true }
-                .disabled(isBusy)
             Text("VTT, SRT, Podcast Index JSON, HTML, or TXT. Episode sharing links are not transcript URLs.")
                 .font(.caption2)
                 .foregroundStyle(theme.textTertiary)
@@ -87,7 +88,6 @@ struct ReferenceTranscriptView: View {
             }
         }
         .tint(theme.teal)
-        .turtleCard()
         .fileImporter(isPresented: $importing, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
             do {
                 guard let url = try result.get().first else { return }

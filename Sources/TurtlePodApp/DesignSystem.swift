@@ -25,6 +25,14 @@ struct TurtleTheme {
     let destructive: Color
     let success: Color
 
+    /// Hairlines and disabled glyphs; too faint for text.
+    let separator: Color
+    /// Swipe action fills, dark enough for the system's white labels.
+    let swipePrimary: Color
+    let swipeSecondary: Color
+    let swipeSuccess: Color
+    let swipeNeutral: Color
+
     static let cardCornerRadius: CGFloat = 14
     static let artworkCornerRadius: CGFloat = 10
     static let miniPlayerCornerRadius: CGFloat = 16
@@ -48,9 +56,14 @@ extension TurtleTheme {
         tealMuted:           Color(red: 0.25, green: 0.55, blue: 0.52),
         textPrimary:         Color(red: 0.93, green: 0.90, blue: 0.85),
         textSecondary:       Color(red: 0.62, green: 0.58, blue: 0.52),
-        textTertiary:        Color(red: 0.42, green: 0.39, blue: 0.35),
-        destructive:         Color(red: 0.85, green: 0.35, blue: 0.30),
-        success:             Color(red: 0.45, green: 0.75, blue: 0.45)
+        textTertiary:        Color(red: 0.57, green: 0.53, blue: 0.48),
+        destructive:         Color(red: 0.87, green: 0.43, blue: 0.39),
+        success:             Color(red: 0.45, green: 0.75, blue: 0.45),
+        separator:           Color(red: 0.42, green: 0.39, blue: 0.35),
+        swipePrimary:        Color(red: 0.60, green: 0.43, blue: 0.06),
+        swipeSecondary:      Color(red: 0.47, green: 0.36, blue: 0.13),
+        swipeSuccess:        Color(red: 0.24, green: 0.48, blue: 0.26),
+        swipeNeutral:        Color(red: 0.40, green: 0.37, blue: 0.33)
     )
 
     /// Warm light — aged paper + burnt sienna + forest green
@@ -62,15 +75,20 @@ extension TurtleTheme {
         backgroundCard:      Color(red: 0.99, green: 0.97, blue: 0.93),
         backgroundElevated:  Color(red: 0.88, green: 0.84, blue: 0.77),
         amber:               Color(red: 0.61, green: 0.27, blue: 0.13),
-        amberMuted:          Color(red: 0.72, green: 0.42, blue: 0.28),
+        amberMuted:          Color(red: 0.53, green: 0.31, blue: 0.21),
         amberGlow:           Color(red: 0.61, green: 0.27, blue: 0.13).opacity(0.12),
-        teal:                Color(red: 0.22, green: 0.48, blue: 0.32),
+        teal:                Color(red: 0.19, green: 0.41, blue: 0.27),
         tealMuted:           Color(red: 0.30, green: 0.55, blue: 0.40),
         textPrimary:         Color(red: 0.17, green: 0.14, blue: 0.10),
         textSecondary:       Color(red: 0.42, green: 0.36, blue: 0.30),
-        textTertiary:        Color(red: 0.62, green: 0.56, blue: 0.50),
+        textTertiary:        Color(red: 0.47, green: 0.41, blue: 0.36),
         destructive:         Color(red: 0.72, green: 0.18, blue: 0.14),
-        success:             Color(red: 0.22, green: 0.55, blue: 0.32)
+        success:             Color(red: 0.22, green: 0.55, blue: 0.32),
+        separator:           Color(red: 0.62, green: 0.56, blue: 0.50),
+        swipePrimary:        Color(red: 0.61, green: 0.27, blue: 0.13),
+        swipeSecondary:      Color(red: 0.67, green: 0.39, blue: 0.26),
+        swipeSuccess:        Color(red: 0.22, green: 0.50, blue: 0.30),
+        swipeNeutral:        Color(red: 0.50, green: 0.44, blue: 0.38)
     )
 
     /// Cool dark — deep navy + soft indigo + electric cyan
@@ -82,15 +100,20 @@ extension TurtleTheme {
         backgroundCard:      Color(red: 0.09, green: 0.11, blue: 0.18),
         backgroundElevated:  Color(red: 0.12, green: 0.15, blue: 0.24),
         amber:               Color(red: 0.55, green: 0.48, blue: 0.97),
-        amberMuted:          Color(red: 0.42, green: 0.36, blue: 0.76),
+        amberMuted:          Color(red: 0.57, green: 0.52, blue: 0.82),
         amberGlow:           Color(red: 0.55, green: 0.48, blue: 0.97).opacity(0.18),
         teal:                Color(red: 0.13, green: 0.83, blue: 0.93),
         tealMuted:           Color(red: 0.10, green: 0.60, blue: 0.70),
         textPrimary:         Color(red: 0.90, green: 0.92, blue: 0.97),
         textSecondary:       Color(red: 0.55, green: 0.60, blue: 0.72),
-        textTertiary:        Color(red: 0.35, green: 0.38, blue: 0.50),
+        textTertiary:        Color(red: 0.49, green: 0.52, blue: 0.65),
         destructive:         Color(red: 0.90, green: 0.35, blue: 0.42),
-        success:             Color(red: 0.30, green: 0.82, blue: 0.60)
+        success:             Color(red: 0.30, green: 0.82, blue: 0.60),
+        separator:           Color(red: 0.35, green: 0.38, blue: 0.50),
+        swipePrimary:        Color(red: 0.45, green: 0.37, blue: 0.96),
+        swipeSecondary:      Color(red: 0.36, green: 0.30, blue: 0.70),
+        swipeSuccess:        Color(red: 0.10, green: 0.50, blue: 0.38),
+        swipeNeutral:        Color(red: 0.32, green: 0.35, blue: 0.48)
     )
 }
 
@@ -100,6 +123,8 @@ enum AppTheme: String, CaseIterable {
     case ember     = "ember"
     case parchment = "parchment"
     case midnight  = "midnight"
+
+    var displayName: String { theme.name }
 
     var theme: TurtleTheme {
         switch self {
@@ -129,82 +154,74 @@ struct ArtworkView: View {
     @Environment(\.appTheme) private var theme
     let url: URL?
     let size: CGFloat
+    var cornerRadius: CGFloat?
+
+    private var radius: CGFloat {
+        cornerRadius ?? max(6, size * 0.12)
+    }
 
     var body: some View {
-        AsyncImage(url: url) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            ZStack {
-                theme.backgroundElevated
-                Image(systemName: "waveform")
-                    .font(.system(size: size * 0.3, weight: .light))
-                    .foregroundStyle(theme.amberMuted.opacity(0.5))
+        AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+            if let image = phase.image {
+                image.resizable().scaledToFill()
+            } else {
+                ZStack {
+                    theme.backgroundElevated
+                    Image(systemName: "waveform")
+                        .font(.system(size: size * 0.3, weight: .light))
+                        .foregroundStyle(theme.amberMuted.opacity(0.5))
+                }
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: TurtleTheme.artworkCornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: TurtleTheme.artworkCornerRadius)
-                .strokeBorder(theme.textPrimary.opacity(0.06), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .strokeBorder(theme.textPrimary.opacity(0.08), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+        .accessibilityHidden(true)
     }
 }
 
-struct AmberProgressBar: View {
-    @Environment(\.appTheme) private var theme
-    let value: Double
+/// Square artwork that fills the width it is given, for grids.
+struct FlexibleArtworkView: View {
+    let url: URL?
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(theme.backgroundElevated)
-                    .frame(height: 4)
-                Capsule()
-                    .fill(LinearGradient(
-                        colors: [theme.amberMuted, theme.amber],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ))
-                    .frame(width: proxy.size.width * min(max(value, 0), 1), height: 4)
-                    .shadow(color: theme.amberGlow, radius: 4)
-            }
-            .frame(maxHeight: .infinity, alignment: .center)
+            ArtworkView(url: url, size: proxy.size.width)
         }
-        .frame(height: 4)
+        .aspectRatio(1, contentMode: .fit)
     }
 }
 
 // MARK: - View Modifiers
 
-struct TurtleCardStyle: ViewModifier {
-    @Environment(\.appTheme) private var theme
-
-    func body(content: Content) -> some View {
-        content
-            .padding(16)
-            .background(theme.backgroundCard)
-            .clipShape(RoundedRectangle(cornerRadius: TurtleTheme.cardCornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: TurtleTheme.cardCornerRadius)
-                    .strokeBorder(theme.amberMuted.opacity(0.12), lineWidth: 0.5)
-            )
-    }
-}
-
 extension View {
-    func turtleCard() -> some View {
-        modifier(TurtleCardStyle())
-    }
-
+    /// Solid themed bars before iOS 26; the system glass bars afterward.
+    @ViewBuilder
     func turtleNavBarBackground(_ theme: TurtleTheme) -> some View {
         #if os(iOS)
-        self
-            .toolbarBackground(theme.backgroundPrimary, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+        if #available(iOS 26.0, *) {
+            self
+        } else {
+            self
+                .toolbarBackground(theme.backgroundPrimary, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+        }
         #else
         self
         #endif
+    }
+
+    /// A floating capsule surface: system glass on iOS 26, a solid fill before it.
+    @ViewBuilder
+    func turtleFloatingCapsule(_ fill: Color) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            glassEffect(.regular.tint(fill.opacity(0.5)), in: Capsule())
+        } else {
+            background(fill, in: Capsule())
+                .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+        }
     }
 }

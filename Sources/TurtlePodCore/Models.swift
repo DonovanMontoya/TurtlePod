@@ -6,13 +6,31 @@ public struct PodcastFeed: Identifiable, Codable, Equatable, Sendable {
     public var feedURL: URL
     public var artworkURL: URL?
     public var episodes: [PodcastEpisode]
+    public var author: String?
+    public var summary: String?
+    public var websiteURL: URL?
+    public var lastRefreshedAt: Date?
 
-    public init(id: UUID = UUID(), title: String, feedURL: URL, artworkURL: URL? = nil, episodes: [PodcastEpisode] = []) {
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        feedURL: URL,
+        artworkURL: URL? = nil,
+        episodes: [PodcastEpisode] = [],
+        author: String? = nil,
+        summary: String? = nil,
+        websiteURL: URL? = nil,
+        lastRefreshedAt: Date? = nil
+    ) {
         self.id = id
         self.title = title
         self.feedURL = feedURL
         self.artworkURL = artworkURL
         self.episodes = episodes
+        self.author = author
+        self.summary = summary
+        self.websiteURL = websiteURL
+        self.lastRefreshedAt = lastRefreshedAt
     }
 }
 
@@ -31,6 +49,12 @@ public struct PodcastEpisode: Identifiable, Codable, Equatable, Sendable {
     public var guid: String?
     public var transcriptSources: [TranscriptSource]?
     public var referenceTranscript: ReferenceTranscript?
+    public var chaptersURL: URL?
+    public var episodeNumber: Int?
+    public var seasonNumber: Int?
+    /// RSS `itunes:episodeType`: full, trailer, or bonus.
+    public var episodeType: String?
+    public var websiteURL: URL?
 
     public init(
         id: UUID = UUID(),
@@ -46,7 +70,12 @@ public struct PodcastEpisode: Identifiable, Codable, Equatable, Sendable {
         autoSkipEnabled: Bool = true,
         guid: String? = nil,
         transcriptSources: [TranscriptSource]? = nil,
-        referenceTranscript: ReferenceTranscript? = nil
+        referenceTranscript: ReferenceTranscript? = nil,
+        chaptersURL: URL? = nil,
+        episodeNumber: Int? = nil,
+        seasonNumber: Int? = nil,
+        episodeType: String? = nil,
+        websiteURL: URL? = nil
     ) {
         self.id = id
         self.feedID = feedID
@@ -62,6 +91,11 @@ public struct PodcastEpisode: Identifiable, Codable, Equatable, Sendable {
         self.guid = guid
         self.transcriptSources = transcriptSources
         self.referenceTranscript = referenceTranscript
+        self.chaptersURL = chaptersURL
+        self.episodeNumber = episodeNumber
+        self.seasonNumber = seasonNumber
+        self.episodeType = episodeType
+        self.websiteURL = websiteURL
     }
 }
 
@@ -258,6 +292,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var whisperModelSize: WhisperModelSize
     public var autoSkipEnabled: Bool
     public var adSkipConfidenceThreshold: Double
+    /// Find ads as soon as a download finishes.
+    public var analyzeAfterDownload: Bool
 
     public init(
         aiAnalysisEnabled: Bool = false,
@@ -265,7 +301,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         aiTranscriptionProvider: AITranscriptionProviderKind = .openAI,
         whisperModelSize: WhisperModelSize = .base,
         autoSkipEnabled: Bool = true,
-        adSkipConfidenceThreshold: Double = 0.72
+        adSkipConfidenceThreshold: Double = 0.72,
+        analyzeAfterDownload: Bool = true
     ) {
         self.aiAnalysisEnabled = aiAnalysisEnabled
         self.aiClassificationProvider = aiClassificationProvider
@@ -273,6 +310,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.whisperModelSize = whisperModelSize
         self.autoSkipEnabled = autoSkipEnabled
         self.adSkipConfidenceThreshold = adSkipConfidenceThreshold
+        self.analyzeAfterDownload = analyzeAfterDownload
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -282,6 +320,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case whisperModelSize
         case autoSkipEnabled
         case adSkipConfidenceThreshold
+        case analyzeAfterDownload
     }
 
     public init(from decoder: Decoder) throws {
@@ -292,5 +331,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         whisperModelSize = try container.decodeIfPresent(WhisperModelSize.self, forKey: .whisperModelSize) ?? .base
         autoSkipEnabled = try container.decodeIfPresent(Bool.self, forKey: .autoSkipEnabled) ?? true
         adSkipConfidenceThreshold = try container.decodeIfPresent(Double.self, forKey: .adSkipConfidenceThreshold) ?? 0.72
+        analyzeAfterDownload = try container.decodeIfPresent(Bool.self, forKey: .analyzeAfterDownload) ?? true
     }
 }

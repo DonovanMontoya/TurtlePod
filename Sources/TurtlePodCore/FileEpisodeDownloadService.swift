@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 public final class FileEpisodeDownloadService: EpisodeDownloadService {
     private let session: URLSession
@@ -25,65 +26,51 @@ public final class FileEpisodeDownloadService: EpisodeDownloadService {
             .deletingPathExtension()
             .appendingPathExtension("download")
 
-        if FileManager.default.fileExists(atPath: temporaryURL.path(percentEncoded: false)) {
-            try FileManager.default.removeItem(at: temporaryURL)
-        }
-        FileManager.default.createFile(atPath: temporaryURL.path(percentEncoded: false), contents: nil)
-
-        var didFinish = false
-        defer {
-            if !didFinish {
-                try? FileManager.default.removeItem(at: temporaryURL)
-            }
-        }
-
-        let (bytes, response) = try await session.bytes(from: episode.audioURL)
-        if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
-            throw URLError(.badServerResponse)
-        }
+        var request = URLRequest(url: episode.audioURL)
+        request.setValue("TurtlePod/1.0", forHTTPHeaderField: "User-Agent")
 
         await progressDidChange?(0)
 
-        let expectedLength = response.expectedContentLength
-        var downloadedBytes: Int64 = 0
-        var lastReportedProgress = 0.0
-        var buffer = Data()
-        buffer.reserveCapacity(64 * 1024)
-        let handle = try FileHandle(forWritingTo: temporaryURL)
+        let (progressUpdates, continuation) = AsyncStream.makeStream(of: Double.self, bufferingPolicy: .bufferingNewest(1))
+        let reporter = Task {
+            for await progress in progressUpdates {
+                await progressDidChange?(progress)
+            }
+        }
+        let delegate = DownloadProgressDelegate(continuation: continuation)
 
+        let downloadedURL: URL
+        let response: URLResponse
         do {
-            for try await byte in bytes {
-                buffer.append(byte)
-                downloadedBytes += 1
-
-                if buffer.count >= 64 * 1024 {
-                    try handle.write(contentsOf: buffer)
-                    buffer.removeAll(keepingCapacity: true)
-                }
-
-                guard expectedLength > 0 else { continue }
-                let progress = min(Double(downloadedBytes) / Double(expectedLength), 0.99)
-                if progress - lastReportedProgress >= 0.01 {
-                    lastReportedProgress = progress
-                    await progressDidChange?(progress)
-                }
-            }
-
-            if !buffer.isEmpty {
-                try handle.write(contentsOf: buffer)
-            }
-            try handle.close()
+            (downloadedURL, response) = try await session.download(for: request, delegate: delegate)
+            delegate.finish()
+            await reporter.value
         } catch {
-            try? handle.close()
+            delegate.finish()
+            reporter.cancel()
             throw error
         }
 
-        if FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) {
-            try FileManager.default.removeItem(at: destination)
+        defer {
+            try? FileManager.default.removeItem(at: downloadedURL)
+            try? FileManager.default.removeItem(at: temporaryURL)
         }
-        try FileManager.default.moveItem(at: temporaryURL, to: destination)
+        if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
+            throw URLError(.badServerResponse)
+        }
+        try Task.checkCancellation()
 
-        didFinish = true
+        // Stage next to the destination first so the final rename stays on one volume.
+        if FileManager.default.fileExists(atPath: temporaryURL.path(percentEncoded: false)) {
+            try FileManager.default.removeItem(at: temporaryURL)
+        }
+        try FileManager.default.moveItem(at: downloadedURL, to: temporaryURL)
+        if FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) {
+            _ = try FileManager.default.replaceItemAt(destination, withItemAt: temporaryURL)
+        } else {
+            try FileManager.default.moveItem(at: temporaryURL, to: destination)
+        }
+
         await progressDidChange?(1)
         return EpisodeDownload(state: .downloaded, localFileURL: destination, progress: 1)
     }
@@ -105,5 +92,59 @@ public final class FileEpisodeDownloadService: EpisodeDownloadService {
         downloadsDirectory
             .appending(path: episode.id.uuidString, directoryHint: .notDirectory)
             .appendingPathExtension(episode.audioURL.pathExtension.isEmpty ? "mp3" : episode.audioURL.pathExtension)
+    }
+}
+
+/// Async `URLSession.download(for:delegate:)` does not deliver `didWriteData` to task delegates,
+/// so progress comes from observing the created task's `Progress`.
+private final class DownloadProgressDelegate: NSObject, URLSessionTaskDelegate, Sendable {
+    private struct State {
+        var lastReported = 0.0
+        var observation: NSKeyValueObservation?
+        var isFinished = false
+    }
+
+    private let continuation: AsyncStream<Double>.Continuation
+    private let state = Mutex(State())
+
+    init(continuation: AsyncStream<Double>.Continuation) {
+        self.continuation = continuation
+    }
+
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        let observation = task.progress.observe(\.fractionCompleted, options: [.new]) { [weak self] progress, _ in
+            self?.report(progress.fractionCompleted)
+        }
+        let shouldKeep = state.withLock { state in
+            guard !state.isFinished else { return false }
+            state.observation = observation
+            return true
+        }
+        if !shouldKeep {
+            observation.invalidate()
+        }
+    }
+
+    func finish() {
+        let observation = state.withLock { state in
+            state.isFinished = true
+            defer { state.observation = nil }
+            return state.observation
+        }
+        observation?.invalidate()
+        continuation.finish()
+    }
+
+    private func report(_ fraction: Double) {
+        guard fraction.isFinite, fraction > 0 else { return }
+        let progress = min(fraction, 0.99)
+        let shouldReport = state.withLock { state in
+            guard !state.isFinished, progress - state.lastReported >= 0.01 else { return false }
+            state.lastReported = progress
+            return true
+        }
+        if shouldReport {
+            continuation.yield(progress)
+        }
     }
 }
