@@ -27,7 +27,8 @@ struct NowPlayingView: View {
 
             if let episode = model.nowPlayingEpisode {
                 Group {
-                    #if os(iOS)
+                    // ArrangementView ships in the iOS 27.1 SDK (Swift 6.4); older SDKs get the fallback.
+                    #if os(iOS) && compiler(>=6.4)
                     if #available(iOS 27.1, *) {
                         // Splits around the fold: artwork above and controls below on a
                         // half-open iPhone Duo, side by side whenever the space is wide.
