@@ -29,6 +29,9 @@ final class DecisionsAdClassifierTests: XCTestCase {
         let result = segments([0, 0.05, 0.3, 0.9, 0.9, 0.3, 0.05, 0])
         XCTAssertEqual(result.map(\.start), [10])
         XCTAssertEqual(result.map(\.end), [30])
+        // The doubtful edges widen the skip but don't lower its confidence below the core's.
+        XCTAssertEqual(result.first?.confidence ?? 0, 0.9, accuracy: 0.001)
+        XCTAssertGreaterThanOrEqual(result.first?.confidence ?? 0, AppSettings().adSkipConfidenceThreshold)
     }
 
     func testShortDoubtfulHoleInsideBreakIsFilled() {

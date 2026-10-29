@@ -264,8 +264,13 @@ public enum CueAdSegmenter {
         func close(_ end: Int) {
             guard let start = runStart else { return }
             runStart = nil
+            // Score the break by the cues that cleared the threshold; doubtful edges and
+            // holes pulled in around them must not drag a confident ad below the skip bar.
+            let core = (start..<end).filter { confirmed[$0] }
             // Audio missing from a reliable publisher transcript is strong evidence on its own.
-            let evidence = (start..<end).map { missing[$0] ? max(probabilities[$0], 0.9) : probabilities[$0] }
+            let evidence = (core.isEmpty ? Array(start..<end) : core).map {
+                missing[$0] ? max(probabilities[$0], 0.9) : probabilities[$0]
+            }
             let confidence = evidence.reduce(0, +) / Double(evidence.count)
             segments.append(AdSegment(start: cues[start].start, end: cues[end - 1].end, confidence: confidence,
                                       reason: reason, provider: provider, model: model))
