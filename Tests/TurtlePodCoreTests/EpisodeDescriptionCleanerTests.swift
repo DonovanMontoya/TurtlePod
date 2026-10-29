@@ -19,4 +19,12 @@ final class EpisodeDescriptionCleanerTests: XCTestCase {
 
         XCTAssertEqual(EpisodeDescriptionCleaner.clean(raw), "One two\n\nThree four")
     }
+
+    func testDecodesTypographicEntitiesAndBlankLines() {
+        let raw = "<p>This week&rsquo;s &ldquo;minisode&rdquo; &mdash; fun&hellip;</p><p> </p><p>&nbsp;</p><p> Sources here.</p>"
+        XCTAssertEqual(
+            EpisodeDescriptionCleaner.clean(raw),
+            "This week\u{2019}s \u{201C}minisode\u{201D} \u{2014} fun\u{2026}\n\nSources here."
+        )
+    }
 }
