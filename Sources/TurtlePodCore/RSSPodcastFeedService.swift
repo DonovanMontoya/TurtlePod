@@ -42,12 +42,29 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
         var duration: TimeInterval?
         var publishedAt: Date?
         var description = ""
+        var chaptersURL: URL?
+        var episodeNumber: Int?
+        var seasonNumber: Int?
+        var episodeType: String?
+        var websiteURL: URL?
     }
+
+    private static let namespacePrefixes = [
+        "http://www.itunes.com/dtds/podcast-1.0.dtd": "itunes",
+        "https://podcastindex.org/namespace/1.0": "podcast",
+        "http://purl.org/rss/1.0/modules/content/": "content",
+        "http://www.w3.org/2005/Atom": "atom"
+    ]
 
     private let feedURL: URL
     private var feedID = UUID()
     private var channelTitle = ""
     private var channelArtworkURL: URL?
+    private var channelAuthor: String?
+    private var channelFallbackAuthor: String?
+    private var channelDescription: String?
+    private var channelSummary: String?
+    private var channelWebsiteURL: URL?
     private var episodes: [PodcastEpisode] = []
     private var currentItem: Item?
     private var elementStack: [String] = []
@@ -70,7 +87,11 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             title: title.isEmpty ? feedURL.host(percentEncoded: false) ?? feedURL.absoluteString : title,
             feedURL: feedURL,
             artworkURL: channelArtworkURL,
-            episodes: episodes
+            episodes: episodes,
+            author: channelAuthor ?? channelFallbackAuthor,
+            summary: channelDescription ?? channelSummary,
+            websiteURL: channelWebsiteURL,
+            lastRefreshedAt: Date()
         )
     }
 
@@ -81,8 +102,7 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
         qualifiedName qName: String?,
         attributes attributeDict: [String: String] = [:]
     ) {
-        let element = namespaceURI == "https://podcastindex.org/namespace/1.0" && elementName == "transcript"
-            ? "podcast:transcript" : normalized(qName ?? elementName)
+        let element = normalized(elementName, namespaceURI: namespaceURI, qualifiedName: qName)
         elementStack.append(element)
         textBuffer = ""
 
@@ -100,6 +120,11 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
                 url: url, type: attributeDict["type"] ?? "",
                 language: attributeDict["language"], label: "Publisher"
             ))
+        } else if element == "podcast:chapters", currentItem != nil,
+                  let rawURL = attributeDict["url"],
+                  let url = URL(string: rawURL, relativeTo: feedURL)?.absoluteURL,
+                  TranscriptSource.isRemoteURL(url) {
+            currentItem?.chaptersURL = url
         } else if element == "image" || element == "itunes:image" {
             if let urlString = attributeDict["href"] ?? attributeDict["url"], let url = URL(string: urlString) {
                 if currentItem != nil {
@@ -121,8 +146,7 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        let element = namespaceURI == "https://podcastindex.org/namespace/1.0" && elementName == "transcript"
-            ? "podcast:transcript" : normalized(qName ?? elementName)
+        let element = normalized(elementName, namespaceURI: namespaceURI, qualifiedName: qName)
         let text = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
         defer {
             _ = elementStack.popLast()
@@ -149,6 +173,23 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             channelTitle = text
         } else if element == "url", elementStack.contains("image"), channelArtworkURL == nil {
             channelArtworkURL = URL(string: text)
+        } else if isDirectChild(element: element, parent: "channel") {
+            switch element {
+            case "itunes:author":
+                channelAuthor = text
+            case "managingeditor", "author":
+                if channelFallbackAuthor == nil {
+                    channelFallbackAuthor = text
+                }
+            case "description":
+                channelDescription = EpisodeDescriptionCleaner.clean(text).nonEmpty
+            case "itunes:summary":
+                channelSummary = EpisodeDescriptionCleaner.clean(text).nonEmpty
+            case "link":
+                channelWebsiteURL = webURL(text)
+            default:
+                break
+            }
         }
     }
 
@@ -168,6 +209,16 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             currentItem?.duration = DurationParser.parse(text)
         case "pubdate":
             currentItem?.publishedAt = DateParser.parseRSSDate(text)
+        case "itunes:episode":
+            currentItem?.episodeNumber = Int(text)
+        case "itunes:season":
+            currentItem?.seasonNumber = Int(text)
+        case "itunes:episodetype":
+            currentItem?.episodeType = text.lowercased()
+        case "link":
+            if isDirectChild(element: "link", parent: "item") {
+                currentItem?.websiteURL = webURL(text)
+            }
         default:
             break
         }
@@ -185,18 +236,38 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             publishedAt: item.publishedAt,
             description: item.description,
             guid: item.guid,
-            transcriptSources: item.transcriptSources
+            transcriptSources: item.transcriptSources,
+            chaptersURL: item.chaptersURL,
+            episodeNumber: item.episodeNumber,
+            seasonNumber: item.seasonNumber,
+            episodeType: item.episodeType,
+            websiteURL: item.websiteURL
         )
     }
 
-    private func normalized(_ element: String) -> String {
-        element.lowercased()
+    /// Namespaced elements use a canonical prefix (`itunes:`, `podcast:`, ...) regardless of the
+    /// prefix the feed declares; unknown namespaces keep their qualified name.
+    private func normalized(_ elementName: String, namespaceURI: String?, qualifiedName qName: String?) -> String {
+        if let namespaceURI, let prefix = Self.namespacePrefixes[namespaceURI] {
+            return "\(prefix):\(elementName)".lowercased()
+        }
+        return (qName ?? elementName).lowercased()
+    }
+
+    private func webURL(_ text: String) -> URL? {
+        guard let url = URL(string: text, relativeTo: feedURL)?.absoluteURL,
+              let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme) else { return nil }
+        return url
     }
 
     private func isDirectChild(element: String, parent: String) -> Bool {
         guard elementStack.last == element, elementStack.count >= 2 else { return false }
         return elementStack[elementStack.count - 2] == parent
     }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }
 
 enum DurationParser {
