@@ -23,6 +23,7 @@ final class NowPlayingCenter {
     private var artworkURL: URL?
     private var artwork: MPMediaItemArtwork?
     private var info: [String: Any] = [:]
+    private var published: (elapsed: TimeInterval, rate: Double, at: Date)?
 
     func configure(handlers: Handlers, skipForward: Int, skipBack: Int) {
         Self.addTargets(handlers)
@@ -89,13 +90,22 @@ final class NowPlayingCenter {
             info[MPMediaItemPropertyArtwork] = artwork
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        published = (elapsed, isPlaying ? rate : 0, Date())
         #if os(macOS)
         MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused
         #endif
         loadArtworkIfNeeded(episode.artworkURL)
     }
 
+    /// True when the time the lock screen is showing is more than a second off.
+    func hasDrifted(from elapsed: TimeInterval) -> Bool {
+        guard let published else { return false }
+        let shown = published.elapsed + Date().timeIntervalSince(published.at) * published.rate
+        return abs(shown - elapsed) > 1
+    }
+
     func clear() {
+        published = nil
         info = [:]
         artwork = nil
         artworkURL = nil

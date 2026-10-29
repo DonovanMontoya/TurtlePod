@@ -13,6 +13,9 @@ extension TurtlePodModel {
         playback.onStateChanged = { [weak self] in
             self?.syncPlayerState()
         }
+        playback.onBoundaryCrossed = { [weak self] time in
+            Task { await self?.evaluateAutoSkip(at: time) }
+        }
         playback.onItemFinished = { [weak self] in
             Task { await self?.handleEpisodeFinished() }
         }
@@ -201,6 +204,7 @@ extension TurtlePodModel {
             try await playback.load(latest, source: source, startAt: start)
             if superseded() { return }
             await autoSkipController.resetForNewEpisode()
+            scheduleAdSkips(for: latest)
             if superseded() { return }
             setSpeed(preferences.playbackSpeed ?? library.playback.speed, persist: false)
 
@@ -421,6 +425,9 @@ extension TurtlePodModel {
 
         if player.currentChapter?.id != lastNowPlayingChapterID {
             lastNowPlayingChapterID = player.currentChapter?.id
+            updateNowPlayingInfo()
+        } else if nowPlaying.hasDrifted(from: time) {
+            // The lock screen extrapolates from the last update; correct it after any jump.
             updateNowPlayingInfo()
         }
         saveCurrentPosition(force: false)

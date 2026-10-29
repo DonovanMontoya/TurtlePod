@@ -107,6 +107,7 @@ final class TurtlePodModel: ObservableObject {
         }
         if let loaded = playback.loadedEpisodeID, let episode = episodes[loaded] {
             playback.updateLoadedEpisode(episode)
+            scheduleAdSkips(for: episode)
         }
     }
 
@@ -418,6 +419,16 @@ final class TurtlePodModel: ObservableObject {
         } else {
             appleSpeechAvailabilityMessage = "Requires iOS 26 or later."
         }
+    }
+
+    /// Asks the player to wake us at each ad's start, so skips land on time
+    /// even while the phone is locked and the periodic tick is throttled.
+    func scheduleAdSkips(for episode: PodcastEpisode) {
+        guard case .local = playback.source, playback.loadedEpisodeID == episode.id else {
+            playback.setBoundaryTimes([])
+            return
+        }
+        playback.setBoundaryTimes(episode.analysis.adSegments.map { $0.start + 0.05 })
     }
 
     func evaluateAutoSkip(at time: TimeInterval) async {
