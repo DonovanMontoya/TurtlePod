@@ -192,10 +192,16 @@ extension TurtlePodModel {
             player.duration = duration(for: latest)
             if case .stream = source { player.isStreaming = true }
             pausedAt = nil
+            // Closing the player mid-load leaves nothing to take over the loaded item.
+            func superseded() -> Bool {
+                guard generation != playbackGeneration else { return false }
+                if player.episodeID == nil { playback.unload() }
+                return true
+            }
             try await playback.load(latest, source: source, startAt: start)
-            guard generation == playbackGeneration else { return }
+            if superseded() { return }
             await autoSkipController.resetForNewEpisode()
-            guard generation == playbackGeneration else { return }
+            if superseded() { return }
             setSpeed(preferences.playbackSpeed ?? library.playback.speed, persist: false)
 
             if autoplay {
@@ -355,6 +361,9 @@ extension TurtlePodModel {
     }
 
     func closePlayer() {
+        // Any start still in flight must not bring the closed episode back.
+        playbackGeneration += 1
+        isLoadingEpisode = false
         saveCurrentPosition(force: true)
         playback.unload()
         player.reset()
