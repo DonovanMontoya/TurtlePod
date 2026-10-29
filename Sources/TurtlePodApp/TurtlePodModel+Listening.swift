@@ -151,8 +151,10 @@ extension TurtlePodModel {
         playbackGeneration += 1
         let generation = playbackGeneration
         let interruptedID = player.episodeID != latest.id ? player.episodeID : nil
+        // An episode that just finished (an outro skip can end it early) is played, not interrupted.
         let interruptedWasInProgress = interruptedID != nil && player.currentTime > 60
             && !PlaybackProgress.isFinished(position: player.currentTime, duration: player.duration)
+            && !(interruptedID.map { state(for: $0).isPlayed } ?? true)
         saveCurrentPosition(force: true)
 
         let source: AVPlayerPlaybackService.Source
