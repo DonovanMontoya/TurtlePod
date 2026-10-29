@@ -315,7 +315,7 @@ struct EpisodeDetailView: View {
 
         switch model.settings.aiClassificationProvider {
         case .openAI:
-            return analysisStatusLabel(provider: "openai", model: "gpt-4o-mini")
+            return analysisStatusLabel(provider: "openai-decisions", model: "gpt-6-luna")
         case .appleFoundationModels:
             return analysisStatusLabel(provider: "apple-foundation-models", model: "system-language-model")
         case .jevTypeSafe:
@@ -334,6 +334,10 @@ struct EpisodeDetailView: View {
         switch provider {
         case "openai":
             "OpenAI"
+        case "openai-decisions":
+            "OpenAI Decisions"
+        case "publisher-transcript":
+            "Publisher Transcript"
         case "local-whisper":
             "Local Whisper"
         case "apple-speech":

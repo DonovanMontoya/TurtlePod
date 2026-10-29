@@ -325,7 +325,7 @@ final class TurtlePodModel: ObservableObject {
                 transcriptionProgressDidChange: { currentChunk, totalChunks in
                     let progress = totalChunks > 0 ? Double(currentChunk) / Double(totalChunks) : 0
                     self.setTranscriptionProgress(progress, for: episode.id)
-                    self.statusMessage = "Transcribing with \(transcriptionLabel): chunk \(currentChunk) of \(totalChunks)…"
+                    self.statusMessage = "Transcribing with \(transcriptionLabel): \(Int((progress * 100).rounded()))%…"
                 }
             )
             await updateEpisode(episode.id) { episode in
@@ -534,6 +534,10 @@ final class TurtlePodModel: ObservableObject {
         switch provider {
         case "openai":
             "OpenAI"
+        case "openai-decisions":
+            "OpenAI Decisions"
+        case "publisher-transcript":
+            "Publisher Transcript"
         case "local-whisper":
             "Local Whisper"
         case "apple-speech":
@@ -611,7 +615,7 @@ final class TurtlePodModel: ObservableObject {
             guard let openAIAPIKey, !openAIAPIKey.isEmpty else {
                 throw TurtlePodError.apiKeyMissing
             }
-            classificationProvider = openAIProvider
+            classificationProvider = OpenAIDecisionsAdClassifier()
             classificationAPIKey = openAIAPIKey
         case .appleFoundationModels:
             try AppleFoundationModelsAdClassifier.validateAvailability()
