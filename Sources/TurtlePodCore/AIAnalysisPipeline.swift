@@ -92,6 +92,33 @@ public final class DefaultAdDetectionService: AdDetectionService {
             throw TurtlePodError.unsupportedResponse
         }
         let sorted = transcript.sorted { $0.start < $1.start }
+        let referenceGaps = comparison?.isReliable == true ? comparison?.candidates ?? [] : []
+        if let scorer = provider as? CueProbabilityClassifier {
+            let cues = sorted.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            let missing = cues.map { cue in
+                referenceGaps.contains { cue.start < $0.end && cue.end > $0.start }
+            }
+            do {
+                let probabilities = try await scorer.cueProbabilities(cues, apiKey: apiKey)
+                return AdSegmentMerger.merge(CueAdSegmenter.segments(
+                    cues: cues,
+                    probabilities: probabilities,
+                    missingFromReference: missing,
+                    reason: referenceGaps.isEmpty
+                        ? "Identified as advertising."
+                        : "Identified as advertising, checked against the publisher's transcript.",
+                    provider: scorer.providerName,
+                    model: scorer.classificationModel
+                ).filter(\.isValid), gapTolerance: gapTolerance)
+            } catch where !referenceGaps.isEmpty && !(error is CancellationError) {
+                // Offline or no key: the publisher's ad-free transcript alone still finds the breaks.
+                return ReferenceAdSegments.segments(from: referenceGaps)
+            }
+        }
+        if provider.classifiesWholeTranscript {
+            let detected = try await provider.classify(transcript: sorted, apiKey: apiKey)
+            return AdSegmentMerger.merge(detected.filter(\.isValid), gapTolerance: gapTolerance)
+        }
         // Bounded requests with one cue of overlap. Every cue is checked, even
         // when it matches the reference (which may contain host-read sponsors).
         var windows: [[TranscriptChunk]] = []

@@ -30,6 +30,7 @@
 		61AF38022BB1A6763AD3E2FE /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C47EAF70EF808351181FBC0 /* Components.swift */; };
 		61C91ED9D4C855F782CD5EB3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335738CB09DA0F1B0503E241 /* SettingsView.swift */; };
 		62ABDA216CF30032D04F1F43 /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 739EE5031C9825462CC665BF /* NowPlayingView.swift */; };
+		62CD1EDBB3D87588C3E1BD6D /* OpenAIDecisionsAdClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83DB651C215C477A0A10BB96 /* OpenAIDecisionsAdClassifier.swift */; };
 		729D9C84418B318226370499 /* PodcastDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E683873E809B4A34A19D1EEF /* PodcastDetailView.swift */; };
 		7726AE037B4EDCF2787E11A0 /* TurtlePodModel+Listening.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BB2758036B11F1A7A4B411 /* TurtlePodModel+Listening.swift */; };
 		7D65901F1B7D2748402AB92D /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E98B5C5BE3F800EB22E0D2 /* WhisperModelManager.swift */; };
@@ -103,6 +104,7 @@
 		6D9FC4D3919BDCF1B4F563F8 /* TurtlePodApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtlePodApp.swift; sourceTree = "<group>"; };
 		739EE5031C9825462CC665BF /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingView.swift; sourceTree = "<group>"; };
 		834327B32FA9BBC3670039C6 /* OPML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPML.swift; sourceTree = "<group>"; };
+		83DB651C215C477A0A10BB96 /* OpenAIDecisionsAdClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIDecisionsAdClassifier.swift; sourceTree = "<group>"; };
 		9E6B5B2B7DB6E4B305C38D08 /* PodcastsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastsView.swift; sourceTree = "<group>"; };
 		A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
 		A5131EB69A62E402BD7C04B6 /* PodcastDirectoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PodcastDirectoryService.swift; sourceTree = "<group>"; };
@@ -191,6 +193,7 @@
 				B078809D7BC2D9A9DEE3B6FB /* LibraryState.swift */,
 				463BF31C5B05745B025A4230 /* LocalWhisperProvider.swift */,
 				F259627375C74EF13CA2E72F /* Models.swift */,
+				83DB651C215C477A0A10BB96 /* OpenAIDecisionsAdClassifier.swift */,
 				A2958DFFAF4ECC85A720A40F /* OpenAIProvider.swift */,
 				834327B32FA9BBC3670039C6 /* OPML.swift */,
 				A5131EB69A62E402BD7C04B6 /* PodcastDirectoryService.swift */,
@@ -335,6 +338,7 @@
 				47907FAEA58E4FFA1A9C0D35 /* LocalWhisperProvider.swift in Sources */,
 				F7F040DA4A26640E56B4372D /* Models.swift in Sources */,
 				CB12C7B55C54057FC946AE79 /* OPML.swift in Sources */,
+				62CD1EDBB3D87588C3E1BD6D /* OpenAIDecisionsAdClassifier.swift in Sources */,
 				874830402D9C6F3815ABFD69 /* OpenAIProvider.swift in Sources */,
 				19057C4FD1A086496ECCBE53 /* PodcastDirectoryService.swift in Sources */,
 				A9A7DF5BEF80C41691AF5A15 /* PodcastFeedMerger.swift in Sources */,

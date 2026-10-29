@@ -87,6 +87,8 @@ public protocol AdClassificationProvider: Sendable {
     var classificationModel: String { get }
 
     func classify(transcript: [TranscriptChunk], apiKey: String) async throws -> [AdSegment]
+    /// True when the provider batches internally and should see the whole episode at once.
+    var classifiesWholeTranscript: Bool { get }
 }
 
 public typealias AIProvider = TranscriptionProvider & AdClassificationProvider
@@ -139,4 +141,14 @@ public enum TurtlePodError: Error, LocalizedError, Equatable {
             "Keychain operation failed with status \(status)."
         }
     }
+}
+
+public extension AdClassificationProvider {
+    var classifiesWholeTranscript: Bool { false }
+}
+
+/// A classifier that scores each cue, so the pipeline can combine those scores
+/// with other evidence such as a publisher transcript.
+public protocol CueProbabilityClassifier: AdClassificationProvider {
+    func cueProbabilities(_ cues: [TranscriptChunk], apiKey: String) async throws -> [Double]
 }
