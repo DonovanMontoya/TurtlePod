@@ -4,7 +4,12 @@ import TurtlePodCore
 
 @MainActor
 final class TurtlePodModel: ObservableObject {
-    @Published var feeds: [PodcastFeed] = []
+    @Published var feeds: [PodcastFeed] = [] {
+        didSet { rebuildEpisodeIndex() }
+    }
+    @Published var library = LibraryState()
+    @Published var isRefreshingFeeds = false
+    @Published var hasLoaded = false
     @Published var settings = AppSettings()
     @Published var apiKeyDraft = ""
     @Published var typeSafeKeyDraft = ""
@@ -12,21 +17,41 @@ final class TurtlePodModel: ObservableObject {
     @Published var statusMessage: String?
     @Published var activeSkipEvent: SkipEvent?
     @Published var selectedWhisperModelIsDownloaded = false
-    @Published var appleSpeechAvailabilityMessage = "Checking Apple Speech model..."
+    @Published var appleSpeechAvailabilityMessage = "Checking Apple Speech model…"
     @Published private var transcriptionProgressByEpisodeID: [UUID: Double] = [:]
 
     @Published private(set) var busyEpisodeIDs: Set<UUID> = []
     @Published private(set) var referenceMessages: [UUID: String] = [:]
     private let referenceService: any ReferenceTranscriptService = HTTPReferenceTranscriptService()
 
+    let player = PlayerController()
+    let nowPlaying = NowPlayingCenter()
+    let directory: PodcastDirectoryService = ITunesPodcastDirectoryService()
+    let libraryStore: LibraryStateStore?
+    private(set) var allEpisodes: [PodcastEpisode] = []
+    private var episodeIndex: [UUID: PodcastEpisode] = [:]
+    private var feedIndex: [UUID: PodcastFeed] = [:]
+    var downloadTasks: [UUID: Task<Void, Never>] = [:]
+    var lastTickPosition: TimeInterval?
+    var lastPositionSave = Date.distantPast
+    var lastNowPlayingChapterID: UUID?
+    var sleepChapterID: UUID?
+    var isLibrarySaveScheduled = false
+    var pendingListenedSeconds: TimeInterval = 0
+    /// Bumped on every episode load so a slower, older load can't win.
+    var playbackGeneration = 0
+    var isLoadingEpisode = false
+    var pausedAt: Date?
+    private var savedKeys: [String] = ["", "", ""]
+
     let playback: AVPlayerPlaybackService
-    private let feedService: PodcastFeedService
-    private let downloadService: EpisodeDownloadService
+    let feedService: PodcastFeedService
+    let downloadService: EpisodeDownloadService
     private let store: EpisodeStore
     private let keyStore: APIKeyStore
     private let jevKeyStore = KeychainJevKeyStore()
     private let openAIProvider: OpenAIProvider
-    private let autoSkipController: AutoSkipController
+    let autoSkipController: AutoSkipController
 
     static func makeDefault() -> TurtlePodModel {
         let provider = OpenAIProvider()
@@ -40,7 +65,8 @@ final class TurtlePodModel: ObservableObject {
             store: store,
             keyStore: keyStore,
             openAIProvider: provider,
-            autoSkipController: AutoSkipController(playback: playback, store: store)
+            autoSkipController: AutoSkipController(playback: playback, store: store),
+            libraryStore: try? LibraryStateStore()
         )
     }
 
@@ -51,7 +77,8 @@ final class TurtlePodModel: ObservableObject {
         store: EpisodeStore,
         keyStore: APIKeyStore,
         openAIProvider: OpenAIProvider,
-        autoSkipController: AutoSkipController
+        autoSkipController: AutoSkipController,
+        libraryStore: LibraryStateStore? = nil
     ) {
         self.feedService = feedService
         self.downloadService = downloadService
@@ -60,11 +87,26 @@ final class TurtlePodModel: ObservableObject {
         self.keyStore = keyStore
         self.openAIProvider = openAIProvider
         self.autoSkipController = autoSkipController
+        self.libraryStore = libraryStore
+        configurePlayback()
     }
 
-    var allEpisodes: [PodcastEpisode] {
-        feeds.flatMap(\.episodes).sorted { lhs, rhs in
+    private func rebuildEpisodeIndex() {
+        var episodes: [UUID: PodcastEpisode] = [:]
+        var feedsByID: [UUID: PodcastFeed] = [:]
+        for feed in feeds {
+            feedsByID[feed.id] = feed
+            for episode in feed.episodes {
+                episodes[episode.id] = episode
+            }
+        }
+        episodeIndex = episodes
+        feedIndex = feedsByID
+        allEpisodes = episodes.values.sorted { lhs, rhs in
             (lhs.publishedAt ?? .distantPast) > (rhs.publishedAt ?? .distantPast)
+        }
+        if let loaded = playback.loadedEpisodeID, let episode = episodes[loaded] {
+            playback.updateLoadedEpisode(episode)
         }
     }
 
@@ -72,8 +114,8 @@ final class TurtlePodModel: ObservableObject {
         allEpisodes.filter { $0.download?.state == .downloaded }
     }
 
-    var currentEpisode: PodcastEpisode? {
-        get async { await playback.currentEpisode }
+    func feed(withID id: UUID) -> PodcastFeed? {
+        feedIndex[id]
     }
 
     func load() async {
@@ -85,12 +127,22 @@ final class TurtlePodModel: ObservableObject {
                 try await persistFeeds()
             }
             settings = try await store.loadSettings()
-            apiKeyDraft = (try keyStore.loadOpenAIKey()) ?? ""
-            typeSafeKeyDraft = (try jevKeyStore.loadKey(for: .typeSafe)) ?? ""
-            openRouterKeyDraft = (try jevKeyStore.loadKey(for: .openRouter)) ?? ""
+            if let libraryStore {
+                library = (try? await libraryStore.load()) ?? LibraryState()
+            }
+            hasLoaded = true
+            await restoreNowPlaying()
+            apiKeyDraft = (try? keyStore.loadOpenAIKey()) ?? ""
+            typeSafeKeyDraft = (try? jevKeyStore.loadKey(for: .typeSafe)) ?? ""
+            openRouterKeyDraft = (try? jevKeyStore.loadKey(for: .openRouter)) ?? ""
+            savedKeys = currentKeys
             await refreshSelectedWhisperModelStatus()
         } catch {
+            hasLoaded = true
             statusMessage = error.localizedDescription
+        }
+        if library.playback.refreshOnLaunch, !feeds.isEmpty {
+            await refreshAllFeeds()
         }
     }
 
@@ -115,25 +167,41 @@ final class TurtlePodModel: ObservableObject {
         selectedWhisperModelIsDownloaded = await WhisperModelManager.shared.isModelDownloaded(size: settings.whisperModelSize)
     }
 
-    func addFeed(urlString: String) async {
-        guard let url = URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines)),
+    @discardableResult
+    func addFeed(urlString: String) async -> UUID? {
+        var trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.lowercased().hasPrefix("feed://") {
+            trimmed = "https://" + trimmed.dropFirst("feed://".count)
+        } else if !trimmed.contains("://") {
+            trimmed = "https://" + trimmed
+        }
+        guard let url = URL(string: trimmed),
               TranscriptSource.isRemoteURL(url) else {
-            statusMessage = "Enter a valid RSS URL."
-            return
+            statusMessage = "Enter a valid RSS feed URL."
+            return nil
         }
 
         do {
-            statusMessage = "Fetching feed..."
+            statusMessage = "Fetching feed…"
             let feed = try await feedService.fetchFeed(from: url)
+            let feedID: UUID
             if let index = feeds.firstIndex(where: { $0.feedURL == feed.feedURL }) {
                 feeds[index] = PodcastFeedMerger.merge(feed, into: feeds[index])
+                feedID = feeds[index].id
             } else {
                 feeds.append(feed)
+                feedID = feed.id
+                var preferences = library.preferences(for: feed.id)
+                preferences.addedAt = Date()
+                library.podcasts[feed.id] = preferences
+                saveLibrary()
             }
             try await persistFeeds()
-            statusMessage = "Added \(feed.title)."
+            statusMessage = "Subscribed to \(feed.title)."
+            return feedID
         } catch {
-            statusMessage = error.localizedDescription
+            statusMessage = "Couldn't add that feed: \(error.localizedDescription)"
+            return nil
         }
     }
 
@@ -153,6 +221,9 @@ final class TurtlePodModel: ObservableObject {
             let result = try await downloadService.download(
                 episode,
                 progressDidChange: { progress in
+                    // Each update rewrites the feed list, so skip sub-percent changes.
+                    let shown = self.episode(withID: episode.id)?.download?.progress ?? 0
+                    guard progress - shown >= 0.01 || progress >= 1 else { return }
                     await self.updateEpisode(episode.id, persist: false) { episode in
                         episode.download?.progress = min(max(progress, 0), 1)
                     }
@@ -162,6 +233,17 @@ final class TurtlePodModel: ObservableObject {
                 episode.download = result
             }
             statusMessage = "Downloaded \(episode.title)."
+            if settings.analyzeAfterDownload, settings.aiAnalysisEnabled {
+                Task { await self.analyze(episode) }
+            }
+        } catch is CancellationError {
+            await updateEpisode(episode.id) { episode in
+                episode.download = nil
+            }
+        } catch let error as URLError where error.code == .cancelled {
+            await updateEpisode(episode.id) { episode in
+                episode.download = nil
+            }
         } catch {
             await updateEpisode(episode.id) { episode in
                 episode.download = EpisodeDownload(state: .failed, progress: 0, errorMessage: error.localizedDescription)
@@ -176,15 +258,20 @@ final class TurtlePodModel: ObservableObject {
         busyEpisodeIDs.insert(episode.id)
         defer { busyEpisodeIDs.remove(episode.id) }
         do {
-            if await playback.currentEpisode?.id == episode.id {
-                playback.unload()
-                activeSkipEvent = nil
-                await autoSkipController.resetForNewEpisode()
-            }
+            let wasLoaded = playback.loadedEpisodeID == episode.id
+            let wasPlaying = playback.playing
             try await downloadService.deleteDownload(for: episode)
             await updateEpisode(episode.id) { episode in
                 episode.download = nil
                 episode.analysis = EpisodeAnalysis()
+            }
+            if wasLoaded {
+                // Keep listening from the stream instead of stopping playback.
+                activeSkipEvent = nil
+                await autoSkipController.resetForNewEpisode()
+                if let refreshed = self.episode(withID: episode.id) {
+                    await startPlayback(refreshed, resumeAt: player.currentTime, autoplay: wasPlaying)
+                }
             }
         } catch {
             statusMessage = error.localizedDescription
@@ -224,7 +311,7 @@ final class TurtlePodModel: ObservableObject {
                 provider: providerMetadata.classificationProvider,
                 model: providerMetadata.classificationModel
             )
-            statusMessage = "Transcribing with \(transcriptionLabel)..."
+            statusMessage = "Transcribing with \(transcriptionLabel)…"
             let analysis = try await analysisPipeline.analyze(
                 analysisEpisode,
                 statusDidChange: { status in
@@ -232,13 +319,13 @@ final class TurtlePodModel: ObservableObject {
                         episode.analysis.status = status
                     }
                     if status == .classifying {
-                        self.statusMessage = "Classifying ads with \(classificationLabel)..."
+                        self.statusMessage = "Classifying ads with \(classificationLabel)…"
                     }
                 },
                 transcriptionProgressDidChange: { currentChunk, totalChunks in
                     let progress = totalChunks > 0 ? Double(currentChunk) / Double(totalChunks) : 0
                     self.setTranscriptionProgress(progress, for: episode.id)
-                    self.statusMessage = "Transcribing with \(transcriptionLabel): chunk \(currentChunk) of \(totalChunks)..."
+                    self.statusMessage = "Transcribing with \(transcriptionLabel): chunk \(currentChunk) of \(totalChunks)…"
                 }
             )
             await updateEpisode(episode.id) { episode in
@@ -290,7 +377,7 @@ final class TurtlePodModel: ObservableObject {
                 episode.analysis.status = .classifying
                 episode.analysis.errorMessage = nil
             }
-            statusMessage = "Classifying ads with \(classificationLabel)..."
+            statusMessage = "Classifying ads with \(classificationLabel)…"
 
             let comparison = episode.referenceTranscript.map {
                 ReferenceTranscriptAlignment.compare(episode.analysis.transcript, to: $0)
@@ -333,41 +420,12 @@ final class TurtlePodModel: ObservableObject {
         }
     }
 
-    func play(_ episode: PodcastEpisode) async {
-        guard await ensureDownloadFileExists(for: episode.id) else {
-            return
-        }
-
-        do {
-            guard let currentEpisode = self.episode(withID: episode.id) else {
-                throw TurtlePodError.notDownloaded
-            }
-            try await playback.load(currentEpisode)
-            await autoSkipController.resetForNewEpisode()
-            await playback.play()
-        } catch {
-            statusMessage = error.localizedDescription
-        }
-    }
-
-    func togglePlayback() async {
-        if await playback.isPlaying {
-            await playback.pause()
-        } else {
-            await playback.play()
-        }
-    }
-
-    func seek(to time: TimeInterval) async {
-        await playback.seek(to: time)
-    }
-
-    func evaluateAutoSkip() async {
-        guard let playing = await playback.currentEpisode,
-              let episode = self.episode(withID: playing.id),
-              episode.download?.state == .downloaded,
+    func evaluateAutoSkip(at time: TimeInterval) async {
+        guard let playingID = playback.loadedEpisodeID,
+              let episode = self.episode(withID: playingID),
+              case .local = playback.source,
+              !isLoadingEpisode,
               !busyEpisodeIDs.contains(episode.id) else { return }
-        let time = await playback.currentTime
 
         do {
             if let event = try await autoSkipController.evaluate(
@@ -377,6 +435,9 @@ final class TurtlePodModel: ObservableObject {
                 confidenceThreshold: settings.adSkipConfidenceThreshold
             ) {
                 activeSkipEvent = event
+                library.stats.adsSkipped += 1
+                library.stats.secondsSkippedAds += max(event.skippedTo - event.skippedFrom, 0)
+                syncAfterJump()
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(8))
                     if activeSkipEvent?.id == event.id {
@@ -391,7 +452,12 @@ final class TurtlePodModel: ObservableObject {
 
     func undoLastSkip() async {
         await autoSkipController.undoLastSkip()
+        if let event = activeSkipEvent {
+            library.stats.adsSkipped = max(library.stats.adsSkipped - 1, 0)
+            library.stats.secondsSkippedAds = max(library.stats.secondsSkippedAds - (event.skippedTo - event.skippedFrom), 0)
+        }
         activeSkipEvent = nil
+        syncAfterJump()
     }
 
     func setEpisodeAutoSkip(_ enabled: Bool, episodeID: UUID) async {
@@ -400,9 +466,10 @@ final class TurtlePodModel: ObservableObject {
         }
     }
 
-    func saveSettings() async {
+    func saveSettings(includingKeys: Bool = true) async {
         do {
             try await store.saveSettings(settings)
+            guard includingKeys, currentKeys != savedKeys else { return }
             if apiKeyDraft.isEmpty {
                 try keyStore.deleteOpenAIKey()
             } else {
@@ -418,21 +485,25 @@ final class TurtlePodModel: ObservableObject {
             } else {
                 try jevKeyStore.saveKey(openRouterKeyDraft, for: .openRouter)
             }
-            statusMessage = "Settings saved."
+            savedKeys = currentKeys
         } catch {
             statusMessage = error.localizedDescription
         }
     }
 
+    private var currentKeys: [String] {
+        [apiKeyDraft, typeSafeKeyDraft, openRouterKeyDraft]
+    }
+
     func episode(withID id: UUID) -> PodcastEpisode? {
-        allEpisodes.first { $0.id == id }
+        episodeIndex[id]
     }
 
     func transcriptionProgress(for episodeID: UUID) -> Double? {
         transcriptionProgressByEpisodeID[episodeID]
     }
 
-    private func updateEpisode(_ episodeID: UUID, persist: Bool = true, mutate: (inout PodcastEpisode) -> Void) async {
+    func updateEpisode(_ episodeID: UUID, persist: Bool = true, mutate: (inout PodcastEpisode) -> Void) async {
         for feedIndex in feeds.indices {
             guard let episodeIndex = feeds[feedIndex].episodes.firstIndex(where: { $0.id == episodeID }) else {
                 continue
@@ -575,7 +646,7 @@ final class TurtlePodModel: ObservableObject {
         )
     }
 
-    private func ensureDownloadFileExists(for episodeID: UUID) async -> Bool {
+    func ensureDownloadFileExists(for episodeID: UUID) async -> Bool {
         guard let episode = episode(withID: episodeID),
               episode.download?.state == .downloaded else {
             await markDownloadMissing(episodeID)
@@ -754,7 +825,7 @@ final class TurtlePodModel: ObservableObject {
         }
     }
 
-    private func persistFeeds() async throws {
+    func persistFeeds() async throws {
         try await store.saveFeeds(feeds)
     }
 }

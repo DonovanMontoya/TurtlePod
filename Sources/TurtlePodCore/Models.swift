@@ -292,6 +292,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var whisperModelSize: WhisperModelSize
     public var autoSkipEnabled: Bool
     public var adSkipConfidenceThreshold: Double
+    /// Find ads as soon as a download finishes.
+    public var analyzeAfterDownload: Bool
 
     public init(
         aiAnalysisEnabled: Bool = false,
@@ -299,7 +301,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
         aiTranscriptionProvider: AITranscriptionProviderKind = .openAI,
         whisperModelSize: WhisperModelSize = .base,
         autoSkipEnabled: Bool = true,
-        adSkipConfidenceThreshold: Double = 0.72
+        adSkipConfidenceThreshold: Double = 0.72,
+        analyzeAfterDownload: Bool = true
     ) {
         self.aiAnalysisEnabled = aiAnalysisEnabled
         self.aiClassificationProvider = aiClassificationProvider
@@ -307,6 +310,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.whisperModelSize = whisperModelSize
         self.autoSkipEnabled = autoSkipEnabled
         self.adSkipConfidenceThreshold = adSkipConfidenceThreshold
+        self.analyzeAfterDownload = analyzeAfterDownload
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -316,6 +320,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         case whisperModelSize
         case autoSkipEnabled
         case adSkipConfidenceThreshold
+        case analyzeAfterDownload
     }
 
     public init(from decoder: Decoder) throws {
@@ -326,5 +331,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         whisperModelSize = try container.decodeIfPresent(WhisperModelSize.self, forKey: .whisperModelSize) ?? .base
         autoSkipEnabled = try container.decodeIfPresent(Bool.self, forKey: .autoSkipEnabled) ?? true
         adSkipConfidenceThreshold = try container.decodeIfPresent(Double.self, forKey: .adSkipConfidenceThreshold) ?? 0.72
+        analyzeAfterDownload = try container.decodeIfPresent(Bool.self, forKey: .analyzeAfterDownload) ?? true
     }
 }

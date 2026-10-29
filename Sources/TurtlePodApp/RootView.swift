@@ -1,255 +1,300 @@
 import SwiftUI
 import TurtlePodCore
 
-struct RootView: View {
-    @EnvironmentObject private var model: TurtlePodModel
-    @Environment(\.appTheme) private var theme
-    @State private var selectedTab: RootTab = .library
-    @State private var currentEpisode: PodcastEpisode?
-    @State private var currentTime: TimeInterval = 0
-    @State private var isPlaying = false
-
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack {
-                LibraryView()
-            }
-            .tabItem {
-                Label("Library", systemImage: "books.vertical")
-            }
-            .tag(RootTab.library)
-
-            NavigationStack {
-                DownloadsView()
-            }
-            .tabItem {
-                Label("Downloads", systemImage: "arrow.down.circle")
-            }
-            .tag(RootTab.downloads)
-
-            NavigationStack {
-                PlayerView()
-            }
-            .tabItem {
-                Label("Player", systemImage: "play.circle")
-            }
-            .tag(RootTab.player)
-
-            NavigationStack {
-                SettingsView()
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
-            }
-            .tag(RootTab.settings)
-        }
-        .tint(theme.amber)
-        .safeAreaInset(edge: .bottom) {
-            let shouldShowMiniPlayer = selectedTab != .player && currentEpisode != nil
-
-            if model.activeSkipEvent != nil || shouldShowMiniPlayer {
-                VStack(spacing: 8) {
-                    if let event = model.activeSkipEvent {
-                        UndoSkipBanner(event: event)
-                    }
-                    if shouldShowMiniPlayer, let currentEpisode {
-                        MiniPlayerBar(
-                            episode: currentEpisode,
-                            currentTime: currentTime,
-                            isPlaying: isPlaying
-                        )
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom, shouldShowMiniPlayer ? 64 : 8)
-            }
-        }
-        .task {
-            while !Task.isCancelled {
-                currentEpisode = await model.playback.currentEpisode
-                currentTime = await model.playback.currentTime
-                isPlaying = await model.playback.isPlaying
-                await model.evaluateAutoSkip()
-                try? await Task.sleep(for: .milliseconds(500))
-            }
-        }
-    }
+enum Route: Hashable {
+    case episode(UUID)
+    case podcast(UUID)
+    case preview(PodcastSearchResult)
 }
 
-private enum RootTab: Hashable {
-    case library
-    case downloads
-    case player
+enum RootTab: String, Hashable {
+    case podcasts
+    case episodes
+    case upNext
+    case discover
     case settings
 }
 
-private struct MiniPlayerBar: View {
+struct RootView: View {
     @EnvironmentObject private var model: TurtlePodModel
     @Environment(\.appTheme) private var theme
-    let episode: PodcastEpisode
-    let currentTime: TimeInterval
-    let isPlaying: Bool
-
-    private var duration: TimeInterval {
-        max(episode.duration ?? max(episode.analysis.adSegments.map(\.end).max() ?? 1, currentTime + 1), 1)
-    }
+    @Environment(\.scenePhase) private var scenePhase
+    // Scene storage keeps the tab when the app moves between iPhone Duo's displays.
+    @SceneStorage("selectedTab") private var selectedTab: RootTab = .podcasts
 
     var body: some View {
-        HStack(spacing: 12) {
-            ArtworkView(url: episode.artworkURL, size: 44)
+        let player = model.player
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Text(episode.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(theme.textPrimary)
-                        .lineLimit(1)
-                    Spacer()
-                    Text(currentTime.formattedDuration)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(theme.textSecondary)
-                }
-
-                PlaybackScrubber(
-                    currentTime: currentTime,
-                    duration: duration,
-                    adSegments: episode.analysis.adSegments,
-                    trackHeight: 4,
-                    markerHeight: 4,
-                    thumbSize: 10,
-                    trackColor: theme.backgroundElevated,
-                    fillColor: theme.amber,
-                    markerColor: theme.teal
-                ) { seekTime in
-                    Task { await model.seek(to: seekTime) }
-                }
-                .frame(height: 14)
+        TabView(selection: $selectedTab) {
+            Tab("Podcasts", systemImage: "square.grid.2x2", value: RootTab.podcasts) {
+                RoutedStack { PodcastsView(selectedTab: $selectedTab) }
             }
+            Tab("Episodes", systemImage: "list.bullet.below.rectangle", value: RootTab.episodes) {
+                RoutedStack { EpisodesView() }
+            }
+            Tab("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward", value: RootTab.upNext) {
+                RoutedStack { UpNextView() }
+            }
+            .badge(model.library.upNext.items.count)
+            Tab("Settings", systemImage: "gearshape", value: RootTab.settings) {
+                RoutedStack { SettingsView() }
+            }
+            Tab("Discover", systemImage: "magnifyingglass", value: RootTab.discover, role: .search) {
+                RoutedStack { DiscoverView() }
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .tint(theme.amber)
+        .miniPlayerAccessory(isVisible: player.episodeID != nil)
+        .sheet(isPresented: Binding(
+            get: { player.isFullPlayerPresented },
+            set: { player.isFullPlayerPresented = $0 }
+        )) {
+            NowPlayingView()
+                .presentationDragIndicator(.visible)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                model.saveCurrentPosition(force: true)
+                Task { await model.saveLibraryNow() }
+            }
+        }
+    }
+}
 
-            Button {
-                Task { await model.togglePlayback() }
-            } label: {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title3)
-                    .foregroundStyle(theme.amber)
-                    .frame(width: 38, height: 38)
-                    .background(theme.amber.opacity(0.12))
-                    .clipShape(Circle())
+/// A navigation stack that resolves every app route.
+struct RoutedStack<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationDestination(for: Route.self) { route in
+                    switch route {
+                    case .episode(let id):
+                        EpisodeDetailView(episodeID: id)
+                    case .podcast(let id):
+                        PodcastDetailView(feedID: id)
+                    case .preview(let result):
+                        PodcastPreviewView(result: result)
+                    }
+                }
+                .safeAreaInset(edge: .bottom) {
+                    ToastStack()
+                        .padding(.bottom, 8)
+                }
+                .miniPlayerInsetIfNeeded()
+        }
+    }
+}
+
+// MARK: - Mini player placement
+
+private extension View {
+    @ViewBuilder
+    func miniPlayerAccessory(isVisible: Bool) -> some View {
+        if #available(iOS 26.1, *) {
+            #if os(iOS)
+            self.tabViewBottomAccessory(isEnabled: isVisible) {
+                AccessoryMiniPlayer()
+            }
+            #else
+            self
+            #endif
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func miniPlayerInsetIfNeeded() -> some View {
+        if #available(iOS 26.1, *) {
+            #if os(iOS)
+            self
+            #else
+            modifier(MiniPlayerInset())
+            #endif
+        } else {
+            modifier(MiniPlayerInset())
+        }
+    }
+}
+
+#if os(iOS)
+/// Drops the skip button when the tab bar collapses and the accessory goes inline.
+@available(iOS 26.1, *)
+private struct AccessoryMiniPlayer: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    var body: some View {
+        MiniPlayerBar(style: .accessory, isCompact: placement == .inline)
+    }
+}
+#endif
+
+/// Floats the mini player above the tab bar on systems without a tab accessory.
+private struct MiniPlayerInset: ViewModifier {
+    @EnvironmentObject private var model: TurtlePodModel
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom) {
+            if model.player.episodeID != nil {
+                MiniPlayerBar(style: .floating)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 6)
+            }
+        }
+    }
+}
+
+struct MiniPlayerBar: View {
+    enum Style { case accessory, floating }
+
+    @EnvironmentObject private var model: TurtlePodModel
+    @Environment(\.appTheme) private var theme
+    let style: Style
+    var isCompact = false
+
+    var body: some View {
+        let player = model.player
+        if let episode = model.nowPlayingEpisode {
+            HStack(spacing: 8) {
+                Button {
+                    player.isFullPlayerPresented = true
+                } label: {
+                    HStack(spacing: 12) {
+                        ArtworkView(url: episode.artworkURL, size: style == .accessory ? 30 : 42)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(player.currentChapter?.title ?? episode.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(theme.textPrimary)
+                                .lineLimit(1)
+                            if !isCompact, let remaining = player.remaining {
+                                Text("\(remaining.shortDuration) left")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(theme.textSecondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Now playing: \(episode.title)")
+                .accessibilityHint("Opens the player")
+
+                Button {
+                    Task { await model.togglePlayback() }
+                } label: {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.title3)
+                        .foregroundStyle(theme.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+
+                if !isCompact {
+                    Button {
+                        Task { await model.skipForward() }
+                    } label: {
+                        Image(systemName: NowPlayingView.skipSymbol("goforward", seconds: model.library.playback.skipForwardSeconds))
+                            .font(.title3)
+                            .foregroundStyle(theme.textPrimary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Skip forward \(model.library.playback.skipForwardSeconds) seconds")
+                }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isPlaying ? "Pause" : "Play")
+            .padding(.horizontal, style == .accessory ? 12 : 10)
+            .padding(.vertical, style == .accessory ? 0 : 8)
+            .background {
+                if style == .floating {
+                    RoundedRectangle(cornerRadius: TurtleTheme.miniPlayerCornerRadius, style: .continuous)
+                        .fill(theme.backgroundCard)
+                        .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if let duration = player.duration, duration > 0 {
+                    GeometryReader { proxy in
+                        Capsule()
+                            .fill(theme.amber)
+                            .frame(width: proxy.size.width * min(player.currentTime / duration, 1), height: 2)
+                    }
+                    .frame(height: 2)
+                    .padding(.horizontal, style == .accessory ? 18 : 14)
+                    .offset(y: style == .accessory ? 1 : 0)
+                    .accessibilityHidden(true)
+                }
+            }
         }
-        .padding(12)
-        .background(theme.backgroundCard.opacity(0.95))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: TurtleTheme.miniPlayerCornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: TurtleTheme.miniPlayerCornerRadius)
-                .strokeBorder(theme.amberMuted.opacity(0.15), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.4), radius: 12, y: 5)
     }
 }
 
-struct PlaybackScrubber: View {
-    let currentTime: TimeInterval
-    let duration: TimeInterval
-    var adSegments: [AdSegment] = []
-    var trackHeight: CGFloat = 8
-    var markerHeight: CGFloat = 18
-    var thumbSize: CGFloat = 16
-    var trackColor: Color = Color(white: 0.3, opacity: 0.4)
-    var fillColor: Color = .accentColor
-    var markerColor: Color = .orange
-    var onSeek: (TimeInterval) -> Void
+// MARK: - Toasts
 
-    @State private var scrubTime: TimeInterval?
-
-    private var effectiveDuration: TimeInterval {
-        max(duration, 1)
-    }
-
-    private var displayTime: TimeInterval {
-        scrubTime ?? currentTime
-    }
+private struct ToastStack: View {
+    @EnvironmentObject private var model: TurtlePodModel
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        GeometryReader { proxy in
-            let width = max(proxy.size.width, 1)
-            let progress = clampedProgress(for: displayTime)
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(trackColor)
-                    .frame(height: trackHeight)
-
-                Capsule()
-                    .fill(fillColor)
-                    .frame(width: width * progress, height: trackHeight)
-
-                ForEach(adSegments) { segment in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(markerColor)
-                        .frame(
-                            width: max(3, width * clampedSegmentProgress(segment)),
-                            height: markerHeight
-                        )
-                        .offset(x: width * clampedProgress(for: segment.start))
-                }
-
-                Circle()
-                    .fill(fillColor)
-                    .frame(width: thumbSize, height: thumbSize)
-                    .shadow(radius: 2, y: 1)
-                    .offset(x: min(max(width * progress - thumbSize / 2, 0), width - thumbSize))
+        VStack(spacing: 8) {
+            if let event = model.activeSkipEvent, !model.player.isFullPlayerPresented {
+                UndoSkipBanner(event: event)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        scrubTime = time(for: value.location.x, width: width)
+            if let message = model.statusMessage {
+                StatusToast(message: message)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task(id: message) {
+                        AccessibilityNotification.Announcement(message).post()
+                        try? await Task.sleep(for: .seconds(voiceOverEnabled ? 10 : 4))
+                        if model.statusMessage == message {
+                            withAnimation { model.statusMessage = nil }
+                        }
                     }
-                    .onEnded { value in
-                        let seekTime = time(for: value.location.x, width: width)
-                        scrubTime = nil
-                        onSeek(seekTime)
-                    }
-            )
+            }
         }
-        .accessibilityLabel("Playback timeline")
-        .accessibilityValue("\(displayTime.formattedDuration) of \(effectiveDuration.formattedDuration)")
-    }
-
-    private func time(for xPosition: CGFloat, width: CGFloat) -> TimeInterval {
-        let progress = min(max(xPosition / max(width, 1), 0), 1)
-        return TimeInterval(progress) * effectiveDuration
-    }
-
-    private func clampedProgress(for time: TimeInterval) -> CGFloat {
-        CGFloat(min(max(time / effectiveDuration, 0), 1))
-    }
-
-    private func clampedSegmentProgress(_ segment: AdSegment) -> CGFloat {
-        let start = min(max(segment.start, 0), effectiveDuration)
-        let end = min(max(segment.end, start), effectiveDuration)
-        return CGFloat((end - start) / effectiveDuration)
+        .padding(.horizontal, 16)
+        .animation(reduceMotion ? nil : .spring(duration: 0.35), value: model.activeSkipEvent?.id)
+        .animation(reduceMotion ? nil : .spring(duration: 0.35), value: model.statusMessage)
     }
 }
 
-private struct UndoSkipBanner: View {
+private struct StatusToast: View {
+    @EnvironmentObject private var model: TurtlePodModel
+    @Environment(\.appTheme) private var theme
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(theme.textPrimary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .turtleFloatingCapsule(theme.backgroundElevated)
+            .onTapGesture { model.statusMessage = nil }
+            .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+struct UndoSkipBanner: View {
     @EnvironmentObject private var model: TurtlePodModel
     @Environment(\.appTheme) private var theme
     let event: SkipEvent
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "forward.end")
+            Image(systemName: "forward.end.fill")
                 .foregroundStyle(theme.teal)
-            Text("Skipped ad")
+            Text("Skipped \(max(event.skippedTo - event.skippedFrom, 0).shortDuration) ad")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(theme.textPrimary)
-            Spacer()
+            Spacer(minLength: 8)
             Button("Undo") {
                 Task { await model.undoLastSkip() }
             }
@@ -257,17 +302,14 @@ private struct UndoSkipBanner: View {
             .foregroundStyle(theme.backgroundPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
-            .background(theme.teal)
-            .clipShape(Capsule())
+            .background(theme.teal, in: Capsule())
+            .contentShape(Rectangle().inset(by: -8))
+            .accessibilityHint("Returns to where the ad started")
         }
-        .padding(12)
-        .background(theme.backgroundCard.opacity(0.95))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: TurtleTheme.miniPlayerCornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: TurtleTheme.miniPlayerCornerRadius)
-                .strokeBorder(theme.tealMuted.opacity(0.2), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.4), radius: 12, y: 5)
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .turtleFloatingCapsule(theme.backgroundElevated)
+        .frame(maxWidth: 420)
     }
 }
